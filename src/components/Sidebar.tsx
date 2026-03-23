@@ -49,7 +49,7 @@ function NavItems({ onClose, onSignOut }: { onClose?: () => void; onSignOut?: ()
         <p style={{ fontSize: 11, color: muted, marginBottom: onSignOut ? 8 : 0 }}>Test Tube Marketing</p>
         {onSignOut && (
           <button onClick={onSignOut}
-            style={{ fontSize: 11, color: muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
+            style={{ fontSize: 11, color: muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
             onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
             onMouseLeave={e => (e.currentTarget.style.color = muted)}>
             Sign out
@@ -60,23 +60,28 @@ function NavItems({ onClose, onSignOut }: { onClose?: () => void; onSignOut?: ()
   )
 }
 
-export function Sidebar({ onSignOut }: { onSignOut?: () => void }) {
+export function Sidebar({ onSignOut, isMobile }: { onSignOut?: () => void; isMobile?: boolean }) {
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  return (
-    <>
-      {/* Desktop sidebar */}
+  if (!isMobile) {
+    // Desktop: fixed sidebar
+    return (
       <aside style={{
         position: 'fixed', left: 0, top: 0, height: '100vh', width: 224,
         background: sidebarBg, borderRight: `1px solid ${border}`,
         display: 'flex', flexDirection: 'column', zIndex: 30,
-      }} className="hidden md:flex">
+      }}>
         <NavItems onSignOut={onSignOut} />
       </aside>
+    )
+  }
 
-      {/* Mobile top bar */}
-      <div className="md:hidden" style={{
-        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
+  // Mobile: top bar + slide-out drawer
+  return (
+    <>
+      {/* Top bar */}
+      <div style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
         background: sidebarBg, borderBottom: `1px solid ${border}`,
         padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       }}>
@@ -90,16 +95,16 @@ export function Sidebar({ onSignOut }: { onSignOut?: () => void }) {
         </button>
       </div>
 
-      {/* Mobile overlay */}
+      {/* Overlay */}
       {mobileOpen && (
-        <div className="md:hidden" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 35 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 45 }}
           onClick={() => setMobileOpen(false)} />
       )}
 
-      {/* Mobile drawer */}
-      <div className="md:hidden" style={{
+      {/* Drawer */}
+      <div style={{
         position: 'fixed', top: 0, left: 0, height: '100%', width: 260,
-        background: sidebarBg, zIndex: 45, display: 'flex', flexDirection: 'column',
+        background: sidebarBg, zIndex: 55, display: 'flex', flexDirection: 'column',
         transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
         transition: 'transform 0.2s ease',
       }}>

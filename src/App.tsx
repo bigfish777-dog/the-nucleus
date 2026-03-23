@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -9,8 +9,19 @@ import Settings from './pages/Settings'
 import Login, { isAuthenticated } from './pages/Login'
 import './index.css'
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  useEffect(() => {
+    const fn = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', fn)
+    return () => window.removeEventListener('resize', fn)
+  }, [])
+  return isMobile
+}
+
 export default function App() {
   const [authed, setAuthed] = useState(isAuthenticated())
+  const isMobile = useIsMobile()
 
   if (!authed) {
     return <Login onSuccess={() => setAuthed(true)} />
@@ -18,10 +29,16 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="flex min-h-screen" style={{ background: '#111827' }}>
-        <Sidebar onSignOut={() => { localStorage.removeItem('nucleus_auth'); setAuthed(false) }} />
-        <main className="ml-0 md:ml-56 flex-1 min-h-screen overflow-y-auto p-4 pt-20 md:pt-8 md:p-8"
-          style={{ background: '#111827' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: '#111827' }}>
+        <Sidebar onSignOut={() => { localStorage.removeItem('nucleus_auth'); setAuthed(false) }} isMobile={isMobile} />
+        <main style={{
+          marginLeft: isMobile ? 0 : 224,
+          flex: 1,
+          minHeight: '100vh',
+          overflowY: 'auto',
+          padding: isMobile ? '64px 16px 16px' : 32,
+          background: '#111827',
+        }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/pipeline" element={<Pipeline />} />
