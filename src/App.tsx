@@ -20,7 +20,7 @@ export default function App() {
     <BrowserRouter>
       <div className="flex min-h-screen" style={{ background: '#111827' }}>
         <Sidebar onSignOut={() => { localStorage.removeItem('nucleus_auth'); setAuthed(false) }} />
-        <main className="ml-56 flex-1 min-h-screen overflow-y-auto p-8"
+        <main className="ml-0 md:ml-56 flex-1 min-h-screen overflow-y-auto p-4 pt-20 md:pt-8 md:p-8"
           style={{ background: '#111827' }}>
           <Routes>
             <Route path="/" element={<Dashboard />} />

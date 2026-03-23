@@ -123,9 +123,7 @@ export default function Dashboard() {
   // Recalculate key metrics from live data
   const liveThisWeekBooked = activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= weekAgo).length
   const liveAllBooked = activeLeadsData.filter((l: Lead) => 
-    l.call_datetime || 
-    ['qualified','second_call_booked','proposal_sent','proposal_live','no_show','second_call_no_show',
-     'disqualified','closed_won','closed_lost','abandoned'].includes(l.stage)
+    !['abandoned'].includes(l.stage) && l.booking_completed
   ).length
   const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
   const liveShowRate = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0

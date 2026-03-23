@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Kanban, BarChart2, Film, Settings } from 'lucide-react'
+import { LayoutDashboard, Kanban, BarChart2, Film, Settings, Menu, X } from 'lucide-react'
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -9,51 +10,101 @@ const nav = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
 
-export function Sidebar({ onSignOut }: { onSignOut?: () => void }) {
+const sidebarBg = '#0F1117'
+const border = 'rgba(255,255,255,0.06)'
+const muted = '#8891A8'
+
+function NavItems({ onClose, onSignOut }: { onClose?: () => void; onSignOut?: () => void }) {
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 flex flex-col z-30"
-      style={{ background: '#0F1117', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-      {/* Logo */}
-      <div className="px-6 pt-7 pb-8">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl">⚛</span>
+    <>
+      <div style={{ padding: '28px 24px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 22 }}>⚛</span>
           <div>
-            <p className="font-bold text-sm tracking-tight" style={{ color: '#F0F2F8' }}>The Nucleus</p>
-            <p className="text-[10px] font-medium tracking-widest uppercase" style={{ color: '#FF0D64' }}>TTM</p>
+            <p style={{ fontWeight: 700, fontSize: 14, color: '#F0F2F8', margin: 0 }}>The Nucleus</p>
+            <p style={{ fontSize: 10, color: '#FF0D64', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>TTM</p>
           </div>
         </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 px-3 space-y-0.5">
+      <nav style={{ flex: 1, padding: '0 12px' }}>
         {nav.map(({ to, icon: Icon, label }) => (
           <NavLink key={to} to={to} end={to === '/'}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
-                isActive
-                  ? 'text-white bg-white/8'
-                  : 'text-white/50 hover:text-white/80 hover:bg-white/4'
-              }`
-            }>
+            onClick={onClose}
+            style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 12px', borderRadius: 8, marginBottom: 2,
+              textDecoration: 'none', fontSize: 14, fontWeight: 500,
+              color: isActive ? '#F0F2F8' : muted,
+              background: isActive ? 'rgba(255,255,255,0.08)' : 'transparent',
+              transition: 'all 0.15s',
+            })}>
             <Icon size={16} />
             {label}
           </NavLink>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-6 py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
-        <p className="text-[11px] font-medium" style={{ color: '#8891A8' }}>Test Tube Marketing</p>
-        <p className="text-[10px] mb-3" style={{ color: '#8891A8' }}>Acquisition Command Centre</p>
+      <div style={{ padding: '16px 24px 20px', borderTop: `1px solid ${border}` }}>
+        <p style={{ fontSize: 11, color: muted, marginBottom: onSignOut ? 8 : 0 }}>Test Tube Marketing</p>
         {onSignOut && (
-          <button onClick={onSignOut} className="text-[11px] font-medium transition-colors"
-            style={{ color: '#8891A8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+          <button onClick={onSignOut}
+            style={{ fontSize: 11, color: muted, background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
             onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
-            onMouseLeave={e => (e.currentTarget.style.color = '#8891A8')}>
+            onMouseLeave={e => (e.currentTarget.style.color = muted)}>
             Sign out
           </button>
         )}
       </div>
-    </aside>
+    </>
+  )
+}
+
+export function Sidebar({ onSignOut }: { onSignOut?: () => void }) {
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside style={{
+        position: 'fixed', left: 0, top: 0, height: '100vh', width: 224,
+        background: sidebarBg, borderRight: `1px solid ${border}`,
+        display: 'flex', flexDirection: 'column', zIndex: 30,
+      }} className="hidden md:flex">
+        <NavItems onSignOut={onSignOut} />
+      </aside>
+
+      {/* Mobile top bar */}
+      <div className="md:hidden" style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
+        background: sidebarBg, borderBottom: `1px solid ${border}`,
+        padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: 18 }}>⚛</span>
+          <span style={{ fontWeight: 700, fontSize: 15, color: '#F0F2F8' }}>The Nucleus</span>
+        </div>
+        <button onClick={() => setMobileOpen(!mobileOpen)}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#F0F2F8', padding: 4 }}>
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      </div>
+
+      {/* Mobile overlay */}
+      {mobileOpen && (
+        <div className="md:hidden" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 35 }}
+          onClick={() => setMobileOpen(false)} />
+      )}
+
+      {/* Mobile drawer */}
+      <div className="md:hidden" style={{
+        position: 'fixed', top: 0, left: 0, height: '100%', width: 260,
+        background: sidebarBg, zIndex: 45, display: 'flex', flexDirection: 'column',
+        transform: mobileOpen ? 'translateX(0)' : 'translateX(-100%)',
+        transition: 'transform 0.2s ease',
+      }}>
+        <NavItems onClose={() => setMobileOpen(false)} onSignOut={onSignOut} />
+      </div>
+    </>
   )
 }
