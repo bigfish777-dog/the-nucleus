@@ -1,0 +1,207 @@
+"""
+The Nucleus — Email automation
+Handles: confirmation emails, call reminders, weekly reports
+Run via: python3 automations/email.py <command>
+Commands: confirm <lead_id>, reminders, weekly_report
+"""
+import smtplib, json, urllib.request, sys, os
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta, timezone
+
+GMAIL_USER = "bigfish@testtubemarketing.com"
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "ndcrbnkssmuetnok")
+SUPABASE_URL = "https://oirnxlidjgsbcyhtxkse.supabase.co"
+SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s"
+WEEKLY_REPORT_RECIPIENTS = ["bigfish@testtubemarketing.com", "ad@testtubemarketing.com"]
+ZOOM_LINK = "https://us06web.zoom.us/j/your-personal-room"  # update with Nick's personal Zoom
+
+SB_HEADERS = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
+
+def sb_get(path):
+    req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", headers=SB_HEADERS)
+    return json.load(urllib.request.urlopen(req, timeout=15))
+
+def sb_patch(path, data):
+    payload = json.dumps(data).encode()
+    req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}",
+        data=payload, headers={**SB_HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"}, method='PATCH')
+    return urllib.request.urlopen(req, timeout=15).status
+
+def send_email(to, subject, body_text, body_html=None):
+    msg = MIMEMultipart('alternative')
+    msg['From'] = f"Nick Fisher | Test Tube Marketing <{GMAIL_USER}>"
+    msg['To'] = to
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body_text, 'plain'))
+    if body_html:
+        msg.attach(MIMEText(body_html, 'html'))
+    server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+    server.sendmail(GMAIL_USER, to, msg.as_string())
+    server.quit()
+    print(f"  ✓ Sent to {to}")
+
+def fmt_dt(dt_str):
+    if not dt_str: return "TBC"
+    try:
+        dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
+        return dt.strftime("%A %-d %B at %-I:%M%p GMT").replace("AM","am").replace("PM","pm")
+    except: return dt_str[:16]
+
+# ─── CONFIRMATION EMAIL ──────────────────────────────────────────────────────
+def send_confirmation(lead_id):
+    leads = sb_get(f"leads?id=eq.{lead_id}&select=*")
+    if not leads: print("Lead not found"); return
+    lead = leads[0]
+    name_first = lead['name'].split()[0] if lead.get('name') else "there"
+    call_time = fmt_dt(lead.get('call_datetime'))
+    
+    subject = f"Your Marketing Growth Call is confirmed — {call_time}"
+    text = f"""Hi {name_first},
+
+Your Marketing Growth Call with Nick Fisher is confirmed.
+
+📅 {call_time}
+🔗 {ZOOM_LINK}
+
+What to expect:
+- 45 minutes — no pitch, no pressure
+- We'll talk about your business, your marketing, and what's not working
+- You'll get an honest view of where the gaps are
+- You can't buy anything on this call
+
+If you need to reschedule, just reply to this email.
+
+Looking forward to speaking with you.
+
+Nick Fisher
+Test Tube Marketing
+bigfish@testtubemarketing.com
+www.testtubemarketing.com
+"""
+    send_email(lead['email'], subject, text)
+    sb_patch(f"leads?id=eq.{lead_id}", {"last_contact_at": datetime.now(timezone.utc).isoformat()})
+
+# ─── REMINDER EMAILS ─────────────────────────────────────────────────────────
+def send_reminders():
+    now = datetime.now(timezone.utc)
+    # Get all booked leads with upcoming calls
+    leads = sb_get("leads?stage=eq.booked&booking_completed=eq.true&call_datetime=not.is.null&select=*")
+    sent = 0
+    for lead in leads:
+        if not lead.get('call_datetime') or not lead.get('email'): continue
+        call_dt = datetime.fromisoformat(lead['call_datetime'].replace('Z','+00:00'))
+        diff_hours = (call_dt - now).total_seconds() / 3600
+        name_first = lead['name'].split()[0] if lead.get('name') else "there"
+        
+        # 24hr reminder
+        if 23 <= diff_hours <= 25:
+            subject = f"Reminder: Your call with Nick is tomorrow — {fmt_dt(lead['call_datetime'])}"
+            text = f"""Hi {name_first},
+
+Just a reminder that your Marketing Growth Call with Nick is tomorrow.
+
+📅 {fmt_dt(lead['call_datetime'])}
+🔗 {ZOOM_LINK}
+
+See you then!
+
+Nick Fisher | Test Tube Marketing
+"""
+            send_email(lead['email'], subject, text)
+            sent += 1
+        
+        # 2hr reminder
+        elif 1.75 <= diff_hours <= 2.25:
+            subject = f"Your call with Nick starts in 2 hours"
+            text = f"""Hi {name_first},
+
+Your Marketing Growth Call starts in 2 hours.
+
+📅 {fmt_dt(lead['call_datetime'])}
+🔗 {ZOOM_LINK}
+
+Nick Fisher | Test Tube Marketing
+"""
+            send_email(lead['email'], subject, text)
+            sent += 1
+    
+    print(f"Reminders sent: {sent}")
+
+# ─── WEEKLY REPORT ───────────────────────────────────────────────────────────
+def send_weekly_report():
+    now = datetime.now(timezone.utc)
+    week_start = (now - timedelta(days=7)).isoformat()
+    next_week_end = (now + timedelta(days=7)).isoformat()
+    
+    all_leads = sb_get("leads?select=*&limit=500")
+    non_spam = [l for l in all_leads if l['stage'] not in ('spam','test','abandoned')]
+    
+    # This week's activity
+    new_bookings = [l for l in non_spam if l.get('booked_at') and l['booked_at'] >= week_start]
+    showed = [l for l in non_spam if l['stage'] in ('qualified','proposal_sent','proposal_live','closed_won','closed_lost')]
+    proposals = [l for l in non_spam if l.get('proposal_sent_at') and l['proposal_sent_at'] >= week_start]
+    won_this_week = [l for l in non_spam if l['stage'] == 'closed_won' and l.get('updated_at') and l['updated_at'] >= week_start]
+    
+    # Pipeline snapshot
+    booked_count = len([l for l in non_spam if l['stage'] == 'booked'])
+    proposal_count = len([l for l in non_spam if l['stage'] == 'proposal_sent'])
+    live_count = len([l for l in non_spam if l['stage'] == 'proposal_live'])
+    live_value = sum(float(l.get('proposal_value') or 0) for l in non_spam if l['stage'] in ('proposal_sent','proposal_live'))
+    total_revenue = sum(float(l.get('revenue') or 0) for l in non_spam if l['stage'] == 'closed_won')
+    
+    # Upcoming calls next 7 days
+    upcoming = [l for l in non_spam if l.get('call_datetime') and now.isoformat() <= l['call_datetime'] <= next_week_end]
+    upcoming.sort(key=lambda x: x['call_datetime'])
+    
+    subject = f"Weekly Report — w/c {now.strftime('%-d %b')}"
+    text = f"""THE NUCLEUS — WEEKLY REPORT
+Week ending {now.strftime('%-d %B %Y')}
+{'='*50}
+
+THIS WEEK
+---------
+New calls booked:     {len(new_bookings)}
+Attended calls:       {len([l for l in new_bookings if l['stage'] not in ('booked','no_show')])}
+Proposals sent:       {len(proposals)}
+Deals closed (won):   {len(won_this_week)}  (£{sum(float(l.get('revenue') or 0) for l in won_this_week):,.0f})
+
+PIPELINE SNAPSHOT
+-----------------
+Calls booked (upcoming): {booked_count}
+Proposals sent (live):   {proposal_count}  (£{live_value:,.0f} total value)
+Proposals - deciding:    {live_count}
+Revenue closed (all time): £{total_revenue:,.0f}
+
+CALLS NEXT 7 DAYS
+-----------------
+"""
+    for l in upcoming:
+        text += f"• {fmt_dt(l.get('call_datetime'))} — {l['name']} ({l.get('industry','?')})\n"
+    
+    if not upcoming:
+        text += "No calls scheduled this week.\n"
+    
+    text += f"""
+---
+The Nucleus | Test Tube Marketing
+"""
+    
+    for recipient in WEEKLY_REPORT_RECIPIENTS:
+        send_email(recipient, subject, text)
+
+# ─── MAIN ────────────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
+    
+    if cmd == "confirm" and len(sys.argv) > 2:
+        send_confirmation(sys.argv[2])
+    elif cmd == "reminders":
+        send_reminders()
+    elif cmd == "weekly_report":
+        send_weekly_report()
+    elif cmd == "test":
+        send_email(GMAIL_USER, "✅ Nucleus email test", "Email system working correctly.")
+    else:
+        print("Usage: python3 email.py <confirm <lead_id> | reminders | weekly_report | test>")
