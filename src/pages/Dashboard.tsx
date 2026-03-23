@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import React from 'react'
+import type { Lead } from '../types'
 import { TrendingUp, TrendingDown, AlertCircle, Calendar } from 'lucide-react'
 
 const pink = '#FF0D64'
