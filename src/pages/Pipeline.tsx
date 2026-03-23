@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
 import { updateLeadStage } from '../lib/supabase'
@@ -326,8 +326,29 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange }: {
 }
 
 export default function Pipeline() {
-  const [leads, setLeads] = useState<Lead[]>(SEED_LEADS)
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+
+  // Load from Supabase on mount, fall back to seed data if unavailable
+  useEffect(() => {
+    async function loadLeads() {
+      try {
+        const { fetchLeads } = await import('../lib/supabase')
+        const { data, error } = await fetchLeads()
+        if (data && !error && data.length > 0) {
+          setLeads(data as Lead[])
+        } else {
+          setLeads(SEED_LEADS)
+        }
+      } catch(e) {
+        setLeads(SEED_LEADS)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadLeads()
+  }, [])
 
   const updateValue = async (id: string, field: 'proposal_value' | 'revenue', value: number) => {
     setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value, updated_at: new Date().toISOString() } : l))
@@ -342,19 +363,35 @@ export default function Pipeline() {
     const current = leads.find(l => l.id === id)
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage, updated_at: new Date().toISOString() } : l))
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null)
-    // Persist to Supabase (best-effort — UI already updated)
-    try { await updateLeadStage(id, stage, current?.stage) } catch(e) { /* offline/seed data */ }
+    // Persist to Supabase and refresh
+    try {
+      await updateLeadStage(id, stage, current?.stage)
+      // Refresh the single lead from Supabase to confirm save
+      const { supabase } = await import('../lib/supabase')
+      const { data } = await supabase.from('leads').select('*').eq('id', id).single()
+      if (data) setLeads(prev => prev.map(l => l.id === id ? data as Lead : l))
+    } catch(e) { /* offline — UI state already correct */ }
   }
 
   return (
     <div className="space-y-4">
       <div>
         <h1 className="text-xl font-bold" style={{ color: '#F0F2F8' }}>Pipeline</h1>
-        <p className="text-sm mt-0.5" style={{ color: muted }}>{leads.filter(l => !['closed_lost','abandoned'].includes(l.stage)).length} active leads</p>
+        <p className="text-sm mt-0.5" style={{ color: muted }}>{loading ? 'Loading...' : `${leads.filter(l => !['closed_lost','abandoned'].includes(l.stage)).length} active leads`}</p>
       </div>
+      {loading && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-sm" style={{ color: muted }}>Loading leads from database...</div>
+        </div>
+      )}
+      {!loading && leads.length === 0 && (
+        <div className="flex items-center justify-center py-20">
+          <div className="text-sm" style={{ color: muted }}>No leads found.</div>
+        </div>
+      )}
 
       {/* Kanban board */}
-      <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 160px)' }}>
+      {!loading && <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 160px)' }}>
         {COLUMNS.map(({ stage, label }) => {
           const colLeads = leads.filter(l => l.stage === stage)
           return (
@@ -375,7 +412,7 @@ export default function Pipeline() {
             </div>
           )
         })}
-      </div>
+      </div>}
 
       {/* Lead detail panel */}
       {selectedLead && (
