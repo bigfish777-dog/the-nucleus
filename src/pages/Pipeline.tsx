@@ -11,9 +11,12 @@ const green = '#22C55E'
 // ── Pipeline columns (active work only) ──────────────────────────────────────
 const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string }[] = [
   { stages: ['booked'], label: 'Call Booked', color: teal },
-  { stages: ['qualified', 'second_call_booked', 'proposal_sent'], label: 'Proposal Sent', color: amber },
+  { stages: ['proposal_sent'], label: 'Proposal Sent', color: amber },
   { stages: ['proposal_live'], label: 'Proposal Live', color: pink },
 ]
+
+// Note: 'qualified' and 'second_call_booked' from old data sit in archive.
+// Move leads to 'proposal_sent' manually once you've confirmed the proposal went out.
 
 // ── Archived stages (tracked but not in main pipeline) ───────────────────────
 const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
