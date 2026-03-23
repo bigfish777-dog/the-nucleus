@@ -94,7 +94,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   )
 }
 
-function LeadDetail({ lead, onClose, onStageChange, onValueChange }: {
+function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange }: {
   lead: Lead; onClose: () => void
   onStageChange: (id: string, stage: PipelineStage) => void
   onValueChange: (id: string, field: 'proposal_value' | 'revenue', value: number) => void
