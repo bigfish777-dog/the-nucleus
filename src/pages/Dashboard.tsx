@@ -62,10 +62,6 @@ const qualifiedLeads = leads.filter(l => ['qualified','second_call_booked','prop
 const costPerQualified = qualifiedLeads ? Math.round(last4WeeksSpend / qualifiedLeads) : 0
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
-const _overdueStage = leads.filter(l => l.stage === 'booked' && l.call_datetime && new Date(l.call_datetime) < now)
-const _staleProposals = leads.filter(l => l.stage === 'proposal_sent' && l.proposal_sent_at && (now.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
-const _noContact = leads.filter(l => l.last_contact_at && (now.getTime() - new Date(l.last_contact_at).getTime()) > 14 * 86400000 && !['closed_won','closed_lost','abandoned'].includes(l.stage))
-const _upcomingSecondCalls = leads.filter(l => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= now)
 
 // ─── Upcoming calls ───────────────────────────────────────────────────────────
 const upcomingCalls = leads
