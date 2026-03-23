@@ -338,6 +338,7 @@ export default function Pipeline() {
     } catch(e) { /* offline */ }
   }
 
+  const updateStage = async (id: string, stage: PipelineStage) => {
     const current = leads.find(l => l.id === id)
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage, updated_at: new Date().toISOString() } : l))
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null)
