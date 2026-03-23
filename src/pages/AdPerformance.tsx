@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import type { PipelineStage } from '../types'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'; const green = '#22C55E'
