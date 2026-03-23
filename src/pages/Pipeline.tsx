@@ -72,10 +72,11 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   )
 }
 
-function LeadDetail({ lead, onClose, onStageChange }: {
+function LeadDetail({ lead, onClose, onStageChange, onValueChange }: {
   lead: Lead
   onClose: () => void
   onStageChange: (id: string, stage: PipelineStage) => void
+  onValueChange: (id: string, field: 'proposal_value' | 'revenue', value: number) => void
 }) {
   const creative = lead.utm_content ? creativeMap[lead.utm_content] : null
   return (
@@ -113,6 +114,120 @@ function LeadDetail({ lead, onClose, onStageChange }: {
               {COLUMNS.map(c => <option key={c.stage} value={c.stage}>{c.label}</option>)}
             </select>
           </div>
+
+          {/* Proposal value — shown when in proposal_sent stage */}
+          {(lead.stage === 'proposal_sent' || lead.stage === 'closed_won' || lead.stage === 'closed_lost') && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Proposal Value</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold" style={{ color: amber }}>£</span>
+                <input
+                  type="number"
+                  defaultValue={lead.proposal_value || ''}
+                  placeholder="Enter proposal value"
+                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) onValueChange(lead.id, 'proposal_value', v) }}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm"
+                  style={{ background: surface, border: `1px solid ${amber}40`, color: '#F0F2F8' }}
+                />
+              </div>
+              {lead.proposal_sent_at && (
+                <p className="text-xs mt-1" style={{ color: muted }}>Sent {new Date(lead.proposal_sent_at).toLocaleDateString('en-GB')}</p>
+              )}
+            </div>
+          )}
+
+          {/* Revenue — shown when Closed Won */}
+          {lead.stage === 'closed_won' && (
+            <div className="p-4 rounded-xl" style={{ background: `${teal}08`, border: `1px solid ${teal}25` }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: teal }}>Revenue Closed</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" style={{ color: teal }}>£</span>
+                <input
+                  type="number"
+                  key={lead.id + '-revenue'}
+                  defaultValue={lead.revenue || ''}
+                  placeholder="Enter revenue amount"
+                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) onValueChange(lead.id, 'revenue', v) }}
+                  className="flex-1 px-3 py-2 rounded-xl text-lg font-bold"
+                  style={{ background: 'transparent', border: `1px solid ${teal}40`, color: teal }}
+                />
+              </div>
+              {lead.revenue && lead.revenue > 0 && (
+                <p className="text-sm font-bold mt-2" style={{ color: teal }}>£{lead.revenue.toLocaleString()} confirmed</p>
+              )}
+            </div>
+          )}
+
+          {/* Close reason — shown when Closed Lost */}
+          {lead.stage === 'closed_lost' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Reason (optional)</p>
+              <input
+                type="text"
+                defaultValue={lead.close_reason || ''}
+                placeholder="Why didn't they close?"
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{ background: surface, border: `1px solid ${border}`, color: '#F0F2F8' }}
+              />
+            </div>
+          )}
+
+          {/* Proposal value — shown when in proposal_sent stage */}
+          {(lead.stage === 'proposal_sent' || lead.stage === 'closed_won' || lead.stage === 'closed_lost') && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Proposal Value</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-bold" style={{ color: amber }}>£</span>
+                <input
+                  type="number"
+                  defaultValue={lead.proposal_value || ''}
+                  placeholder="Enter proposal value"
+                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) onValueChange(lead.id, 'proposal_value', v) }}
+                  className="flex-1 px-3 py-2 rounded-lg text-sm"
+                  style={{ background: surface, border: `1px solid ${amber}40`, color: '#F0F2F8' }}
+                />
+              </div>
+              {lead.proposal_sent_at && (
+                <p className="text-xs mt-1" style={{ color: muted }}>Sent {new Date(lead.proposal_sent_at).toLocaleDateString('en-GB')}</p>
+              )}
+            </div>
+          )}
+
+          {/* Revenue — shown when Closed Won */}
+          {lead.stage === 'closed_won' && (
+            <div className="p-4 rounded-xl" style={{ background: `${teal}08`, border: `1px solid ${teal}25` }}>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: teal }}>Revenue Closed</p>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold" style={{ color: teal }}>£</span>
+                <input
+                  type="number"
+                  key={lead.id + '-revenue'}
+                  defaultValue={lead.revenue || ''}
+                  placeholder="Enter revenue amount"
+                  onBlur={e => { const v = parseFloat(e.target.value); if (!isNaN(v) && v > 0) onValueChange(lead.id, 'revenue', v) }}
+                  className="flex-1 px-3 py-2 rounded-xl text-lg font-bold"
+                  style={{ background: 'transparent', border: `1px solid ${teal}40`, color: teal }}
+                />
+              </div>
+              {lead.revenue && lead.revenue > 0 && (
+                <p className="text-sm font-bold mt-2" style={{ color: teal }}>£{lead.revenue.toLocaleString()} confirmed</p>
+              )}
+            </div>
+          )}
+
+          {/* Close reason — shown when Closed Lost */}
+          {lead.stage === 'closed_lost' && (
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Reason (optional)</p>
+              <input
+                type="text"
+                defaultValue={lead.close_reason || ''}
+                placeholder="Why didn't they close?"
+                className="w-full px-3 py-2 rounded-lg text-sm"
+                style={{ background: surface, border: `1px solid ${border}`, color: '#F0F2F8' }}
+              />
+            </div>
+          )}
 
           {/* Contact */}
           <div>
@@ -214,7 +329,15 @@ export default function Pipeline() {
   const [leads, setLeads] = useState<Lead[]>(SEED_LEADS)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
-  const updateStage = async (id: string, stage: PipelineStage) => {
+  const updateValue = async (id: string, field: 'proposal_value' | 'revenue', value: number) => {
+    setLeads(prev => prev.map(l => l.id === id ? { ...l, [field]: value, updated_at: new Date().toISOString() } : l))
+    if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, [field]: value } : null)
+    try {
+      const { supabase } = await import('../lib/supabase')
+      await supabase.from('leads').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id)
+    } catch(e) { /* offline */ }
+  }
+
     const current = leads.find(l => l.id === id)
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage, updated_at: new Date().toISOString() } : l))
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null)
@@ -259,6 +382,7 @@ export default function Pipeline() {
           lead={selectedLead}
           onClose={() => setSelectedLead(null)}
           onStageChange={updateStage}
+          onValueChange={updateValue}
         />
       )}
     </div>
