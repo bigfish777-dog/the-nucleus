@@ -55,9 +55,8 @@ const showRate = allBooked ? Math.round((showed / allBooked) * 100) : 0
 const revThisQ = leads.filter(l => l.revenue && l.stage === 'closed_won').reduce((s, l) => s + (l.revenue || 0), 0)
 
 const last4WeeksSpend = SEED_AD_PERFORMANCE
-  .filter(p => new Date(p.date) >= new Date('2026-02-22'))
+  .filter(p => { const d = new Date(p.date); const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-28); return d >= cutoff; })
   .reduce((s, p) => s + p.spend, 0)
-const costPerCall = allBooked ? Math.round(last4WeeksSpend / allBooked) : 0
 
 const qualifiedLeads = leads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length
 const costPerQualified = qualifiedLeads ? Math.round(last4WeeksSpend / qualifiedLeads) : 0
@@ -127,11 +126,20 @@ export default function Dashboard() {
   ).length
   const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
   const liveShowRate = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
-  const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.updated_at && new Date(l.updated_at) >= new Date('2026-03-01')).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // Revenue this month — use the first day of current month dynamically
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.updated_at && l.updated_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
   const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
+  const liveCostPerCall = liveAllBooked ? Math.round(last4WeeksSpend / liveAllBooked) : 0
   const liveClosedWon = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+
+  // Live flags from Supabase data
+  const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < now)
+  const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (now.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
+  const liveNoContact = activeLeadsData.filter((l: Lead) => l.last_contact_at && (now.getTime() - new Date(l.last_contact_at).getTime()) > 14 * 86400000 && !['closed_won','closed_lost','abandoned','spam','test','no_show','disqualified'].includes(l.stage))
+  const liveUpcomingSecond = activeLeadsData.filter((l: Lead) => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= now)
 
   const funnelData = [
     { stage: 'Leads', count: liveTotalLeads, pct: 100, color: teal },
@@ -160,7 +168,7 @@ export default function Dashboard() {
           sub="Awaiting decision" color={amber} />
         <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
-        <MetricCard label="Cost per call (4wk)" value={`£${costPerCall}`}
+        <MetricCard label="Cost per call (4wk)" value={`£${liveCostPerCall}`}
           sub="Rolling 4-week average" />
         <MetricCard label="Cost per qualified (4wk)" value={`£${costPerQualified}`}
           sub="Calls that reached Qualified+" />
@@ -245,34 +253,34 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: muted }}>
-            Flags {(overdueStage.length + staleProposals.length + noContact.length + upcomingSecondCalls.length) > 0 &&
+            Flags {(liveOverdue.length + liveStaleProposals.length + liveNoContact.length + liveUpcomingSecond.length) > 0 &&
               <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px]" style={{ background: `${pink}20`, color: pink }}>
-                {overdueStage.length + staleProposals.length + noContact.length + upcomingSecondCalls.length}
+                {liveOverdue.length + liveStaleProposals.length + liveNoContact.length + liveUpcomingSecond.length}
               </span>}
           </p>
-          {overdueStage.length + staleProposals.length + noContact.length + upcomingSecondCalls.length === 0 ? (
+          {liveOverdue.length + liveStaleProposals.length + liveNoContact.length + liveUpcomingSecond.length === 0 ? (
             <p className="text-sm" style={{ color: muted }}>No flags. All clear.</p>
           ) : (
             <div className="space-y-2">
-              {overdueStage.map(l => (
+              {liveOverdue.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: `${pink}10`, border: `1px solid ${pink}25` }}>
                   <AlertCircle size={13} style={{ color: pink, flexShrink: 0, marginTop: 1 }} />
                   <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — call date passed, needs stage update</p>
                 </div>
               ))}
-              {staleProposals.map(l => (
+              {liveStaleProposals.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: `${amber}10`, border: `1px solid ${amber}25` }}>
                   <AlertCircle size={13} style={{ color: amber, flexShrink: 0, marginTop: 1 }} />
                   <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — proposal {Math.floor((now.getTime()-new Date(l.proposal_sent_at!).getTime())/86400000)}d old with no update</p>
                 </div>
               ))}
-              {upcomingSecondCalls.map(l => (
+              {liveUpcomingSecond.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: `${teal}08`, border: `1px solid ${teal}20` }}>
                   <Calendar size={13} style={{ color: teal, flexShrink: 0, marginTop: 1 }} />
                   <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — second call {l.second_call_datetime ? new Date(l.second_call_datetime).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}) : ''}</p>
                 </div>
               ))}
-              {noContact.map(l => (
+              {liveNoContact.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
                   <AlertCircle size={13} style={{ color: muted, flexShrink: 0, marginTop: 1 }} />
                   <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — no contact in {Math.floor((now.getTime()-new Date(l.last_contact_at!).getTime())/86400000)}d</p>
