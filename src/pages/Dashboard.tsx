@@ -3,6 +3,7 @@ import {
   LineChart, Line, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
+import React from 'react'
 import { TrendingUp, TrendingDown, AlertCircle, Calendar } from 'lucide-react'
 
 const pink = '#FF0D64'
@@ -50,8 +51,6 @@ const lastWeekBooked = leads.filter(l => l.booked_at && new Date(l.booked_at) >=
 const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
 const allBooked = leads.filter(l => l.booking_completed).length
 const showRate = allBooked ? Math.round((showed / allBooked) * 100) : 0
-const liveProposals = leads.filter(l => l.stage === 'proposal_sent').length
-const revThisMonth = leads.filter(l => l.revenue && l.stage === 'closed_won' && l.updated_at && new Date(l.updated_at) >= new Date('2026-03-01')).reduce((s, l) => s + (l.revenue || 0), 0)
 const revThisQ = leads.filter(l => l.revenue && l.stage === 'closed_won').reduce((s, l) => s + (l.revenue || 0), 0)
 
 const last4WeeksSpend = SEED_AD_PERFORMANCE
@@ -86,20 +85,7 @@ const weeklyData = Array.from({ length: 12 }, (_, i) => {
   return { label: `W${12-i}`, booked, qual, props, spend: Math.round(spend) }
 }).reverse()
 
-// Funnel data — Leads → Calls Booked → Attended → Proposals Sent → Closed
-const totalLeads = leads.length  // all opt-ins
-const callsBooked = leads.filter(l => l.booking_completed).length
-const attended = leads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost','abandoned'].includes(l.stage)).length
-const proposalsSent = leads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost','abandoned'].includes(l.stage) && l.proposal_value && Number(l.proposal_value) > 0).length
-const closedWon = leads.filter(l=>l.stage==='closed_won').length
 
-const funnelData = [
-  { stage: 'Leads', count: totalLeads, pct: 100, color: teal },
-  { stage: 'Calls Booked', count: callsBooked, pct: totalLeads ? Math.round(callsBooked/totalLeads*100) : 0, color: teal },
-  { stage: 'Attended', count: attended, pct: callsBooked ? Math.round(attended/callsBooked*100) : 0, color: amber },
-  { stage: 'Proposals Sent', count: proposalsSent, pct: attended ? Math.round(proposalsSent/attended*100) : 0, color: pink },
-  { stage: 'Closed Won', count: closedWon, pct: proposalsSent ? Math.round(closedWon/proposalsSent*100) : 0, color: '#22C55E' },
-]
 
 // Ad spend vs revenue (weekly)
 const spendRevenueData = weeklyData.map(w => ({
@@ -118,6 +104,40 @@ const runningAvgData = weeklyData.map((w, i) => {
 const creativeMap = Object.fromEntries(SEED_CREATIVES.map(c => [c.utm_content_value, c.name]))
 
 export default function Dashboard() {
+  const [liveLeads, setLiveLeads] = React.useState<Lead[] | null>(null)
+  React.useEffect(() => {
+    async function load() {
+      try {
+        const { fetchLeads } = await import('../lib/supabase')
+        const { data } = await fetchLeads()
+        if (data && data.length > 0) setLiveLeads(data as Lead[])
+      } catch { /* use seed */ }
+    }
+    load()
+  }, [])
+
+  // Use live data if available, filter out spam/test from all metrics
+  const activeLeadsData = (liveLeads || leads).filter((l: Lead) => !['spam','test'].includes(l.stage))
+
+  // Recalculate key metrics from live data
+  const liveThisWeekBooked = activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= weekAgo).length
+  const liveAllBooked = activeLeadsData.filter((l: Lead) => l.booking_completed).length
+  const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
+  const liveShowRate = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
+  const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.updated_at && new Date(l.updated_at) >= new Date('2026-03-01')).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  const liveTotalLeads = activeLeadsData.length
+  const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
+  const liveClosedWon = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+
+  const funnelData = [
+    { stage: 'Leads', count: liveTotalLeads, pct: 100, color: teal },
+    { stage: 'Calls Booked', count: liveAllBooked, pct: liveTotalLeads ? Math.round(liveAllBooked/liveTotalLeads*100) : 0, color: teal },
+    { stage: 'Attended', count: liveShowed, pct: liveAllBooked ? Math.round(liveShowed/liveAllBooked*100) : 0, color: amber },
+    { stage: 'Proposals Sent', count: liveProposalsSent, pct: liveShowed ? Math.round(liveProposalsSent/liveShowed*100) : 0, color: pink },
+    { stage: 'Closed Won', count: liveClosedWon, pct: liveProposalsSent ? Math.round(liveClosedWon/liveProposalsSent*100) : 0, color: '#22C55E' },
+  ]
+
   return (
     <div className="space-y-5">
       <div>
@@ -127,16 +147,16 @@ export default function Dashboard() {
 
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard label="Calls booked this week" value={String(thisWeekBooked)}
+        <MetricCard label="Calls booked this week" value={String(liveThisWeekBooked)}
           sub={`${thisWeekBooked >= lastWeekBooked ? '+' : ''}${thisWeekBooked - lastWeekBooked} vs last week`}
           trend={thisWeekBooked >= lastWeekBooked ? 'up' : 'down'} color={teal} />
-        <MetricCard label="Show rate (30d)" value={`${showRate}%`}
+        <MetricCard label="Show rate (30d)" value={`${liveShowRate}%`}
           sub={showRate >= 70 ? 'On target' : 'Below 70% target'}
           trend={showRate >= 70 ? 'up' : 'down'} />
         <MetricCard label="Live proposals" value={String(liveProposals)}
           sub="Awaiting decision" color={amber} />
-        <MetricCard label="Revenue this month" value={`£${revThisMonth.toLocaleString()}`}
-          sub={`£${revThisQ.toLocaleString()} this quarter`} color={teal} trend="up" />
+        <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
+          sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
         <MetricCard label="Cost per call (4wk)" value={`£${costPerCall}`}
           sub="Rolling 4-week average" />
         <MetricCard label="Cost per qualified (4wk)" value={`£${costPerQualified}`}
