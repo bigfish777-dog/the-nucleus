@@ -147,7 +147,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Metric cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard label="Calls booked this week" value={String(liveThisWeekBooked)}
           sub={`${thisWeekBooked >= lastWeekBooked ? '+' : ''}${thisWeekBooked - lastWeekBooked} vs last week`}
           trend={thisWeekBooked >= lastWeekBooked ? 'up' : 'down'} color={teal} />
@@ -169,7 +169,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Charts row 1 ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: muted }}>Weekly — booked, qualified & proposals (12 weeks)</p>
           <ResponsiveContainer width="100%" height={180}>
@@ -206,7 +206,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Charts row 2 ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: muted }}>Ad spend vs revenue — 12 weeks</p>
           <ResponsiveContainer width="100%" height={160}>
@@ -240,7 +240,7 @@ export default function Dashboard() {
       </div>
 
       {/* ── Alerts + Upcoming ── */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: muted }}>
             Flags {(overdueStage.length + staleProposals.length + noContact.length + upcomingSecondCalls.length) > 0 &&

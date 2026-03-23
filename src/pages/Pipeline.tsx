@@ -348,36 +348,59 @@ export default function Pipeline() {
 
       {loading && <div className="flex items-center justify-center py-20"><div className="text-sm" style={{ color: muted }}>Loading from database...</div></div>}
 
-      {/* Active pipeline */}
+      {/* Active pipeline — kanban on desktop, list on mobile */}
       {!loading && (
-        <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
-          {PIPELINE_COLUMNS.map(({ stages, label, color }) => {
-            const colLeads = pipelineLeads.filter(l => stages.includes(l.stage))
-            return (
-              <div key={label} className="flex-shrink-0 w-60 flex flex-col">
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <p className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
-                  <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>{colLeads.length}</span>
+        <>
+          {/* Desktop: kanban columns */}
+          <div className="hidden md:flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
+            {PIPELINE_COLUMNS.map(({ stages, label, color }) => {
+              const colLeads = pipelineLeads.filter(l => stages.includes(l.stage))
+              return (
+                <div key={label} className="flex-shrink-0 w-60 flex flex-col">
+                  <div className="flex items-center justify-between mb-2 px-1">
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>{colLeads.length}</span>
+                  </div>
+                  <div className="flex-1 space-y-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.02)', minHeight: 100 }}>
+                    {colLeads.map(lead => <LeadCard key={lead.id} lead={lead} onClick={() => setSelected(lead)} />)}
+                  </div>
                 </div>
-                <div className="flex-1 space-y-2 rounded-xl p-2" style={{ background: 'rgba(255,255,255,0.02)', minHeight: 100 }}>
-                  {colLeads.map(lead => <LeadCard key={lead.id} lead={lead} onClick={() => setSelected(lead)} />)}
+              )
+            })}
+          </div>
+
+          {/* Mobile: vertical list grouped by stage */}
+          <div className="md:hidden space-y-4">
+            {PIPELINE_COLUMNS.map(({ stages, label, color }) => {
+              const colLeads = pipelineLeads.filter(l => stages.includes(l.stage))
+              if (colLeads.length === 0) return null
+              return (
+                <div key={label}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+                    <p className="text-xs font-bold uppercase tracking-wider" style={{ color }}>{label}</p>
+                    <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>{colLeads.length}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {colLeads.map(lead => <LeadCard key={lead.id} lead={lead} onClick={() => setSelected(lead)} />)}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              )
+            })}
+          </div>
+        </>
       )}
 
       {/* Archive */}
       {!loading && showArchive && (
         <div className="mt-4">
           <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>Archive — tracked data</p>
-          <div className="flex gap-3 overflow-x-auto pb-4">
+          <div className="flex flex-col md:flex-row gap-3 md:overflow-x-auto pb-4">
             {ARCHIVE_COLUMNS.map(({ stage, label }) => {
               const colLeads = archiveLeads.filter(l => l.stage === stage)
               if (colLeads.length === 0) return null
               return (
-                <div key={stage} className="flex-shrink-0 w-48 flex flex-col">
+                <div key={stage} className="w-full md:flex-shrink-0 md:w-48 flex flex-col">
                   <div className="flex items-center justify-between mb-2 px-1">
                     <p className="text-xs font-bold uppercase tracking-wider" style={{ color: muted }}>{label}</p>
                     <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>{colLeads.length}</span>
