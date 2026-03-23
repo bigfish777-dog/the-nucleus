@@ -8,25 +8,29 @@ const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'; const green = '#22C55E'
 
 // Active pipeline stages (visible in main board)
+// Note: 'qualified' and 'second_call_booked' both display as "Awaiting Proposal"
 const ACTIVE_COLUMNS: { stage: PipelineStage; label: string; color?: string }[] = [
-  { stage: 'booked', label: 'Booked', color: teal },
-  { stage: 'qualified', label: 'Qualified', color: amber },
-  { stage: 'second_call_booked', label: '2nd Call Booked', color: amber },
+  { stage: 'booked', label: 'Call Booked', color: teal },
+  { stage: 'qualified', label: 'Awaiting Proposal', color: amber },
   { stage: 'proposal_sent', label: 'Proposal Sent', color: pink },
-  { stage: 'closed_won', label: 'Closed Won', color: green },
+  { stage: 'abandoned', label: 'Abandoned', color: muted },
 ]
+
+// These stages are tracked but not shown in the pipeline board
+// They appear in dashboard metrics and can be viewed via archive toggle
+// 'second_call_booked' is treated as 'awaiting proposal' in the UI
 
 // All stages for the selector dropdown
 const ALL_STAGES: { stage: PipelineStage; label: string }[] = [
-  { stage: 'booked', label: 'Booked' },
+  { stage: 'booked', label: 'Call Booked' },
   { stage: 'no_show', label: 'No-Show' },
   { stage: 'disqualified', label: 'Disqualified' },
-  { stage: 'qualified', label: 'Qualified' },
-  { stage: 'second_call_booked', label: '2nd Call Booked' },
+  { stage: 'qualified', label: 'Awaiting Proposal' },
+  { stage: 'second_call_booked', label: 'Awaiting Proposal (2nd call)' },
   { stage: 'proposal_sent', label: 'Proposal Sent' },
-  { stage: 'closed_won', label: 'Closed Won' },
+  { stage: 'abandoned', label: 'Abandoned (no response)' },
+  { stage: 'closed_won', label: 'Closed Won ✓' },
   { stage: 'closed_lost', label: 'Closed Lost' },
-  { stage: 'abandoned', label: 'Abandoned' },
 ]
 
 const creativeMap = Object.fromEntries(SEED_CREATIVES.map(c => [c.utm_content_value, c]))
@@ -297,10 +301,13 @@ export default function Pipeline() {
     } catch(e) { /* offline */ }
   }
 
-  // Active stages only (excludes no_show, disqualified, closed_lost, abandoned)
-  const activeStages = new Set(ACTIVE_COLUMNS.map(c => c.stage))
-  const activeLeads = leads.filter(l => activeStages.has(l.stage))
-  const archivedLeads = leads.filter(l => !activeStages.has(l.stage))
+  // Active pipeline leads — show booked, qualified/second_call (both = awaiting proposal), proposal_sent, abandoned
+  const pipelineStages = new Set<PipelineStage>(['booked', 'qualified', 'second_call_booked', 'proposal_sent', 'abandoned'])
+  const activeLeads = leads.filter(l => pipelineStages.has(l.stage))
+  // For column display: merge second_call_booked into qualified column
+  const archivedLeads = leads.filter(l => !pipelineStages.has(l.stage))
+  // Opted-in but never booked — stored but not shown anywhere in pipeline
+  const optedInOnly = leads.filter(l => !l.booking_completed && l.stage === 'abandoned')
   const overdueLeads = leads.filter(isOverdue)
 
   return (
@@ -332,7 +339,12 @@ export default function Pipeline() {
       {!loading && (
         <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
           {ACTIVE_COLUMNS.map(({ stage, label, color }) => {
-            const colLeads = activeLeads.filter(l => l.stage === stage)
+            // Merge second_call_booked into the qualified/awaiting proposal column
+            const colLeads = activeLeads.filter(l => 
+              stage === 'qualified' 
+                ? (l.stage === 'qualified' || l.stage === 'second_call_booked')
+                : l.stage === stage
+            )
             return (
               <div key={stage} className="flex-shrink-0 w-56 flex flex-col">
                 <div className="flex items-center justify-between mb-2 px-1">
@@ -353,9 +365,9 @@ export default function Pipeline() {
       {/* Archive section */}
       {!loading && showArchive && archivedLeads.length > 0 && (
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>Archive — no-shows, disqualified, closed lost, abandoned</p>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>Tracked data — no-shows, DQ'd, won, lost (not in pipeline)</p>
           <div className="flex gap-3 overflow-x-auto pb-4">
-            {(['no_show','disqualified','closed_lost','abandoned'] as PipelineStage[]).map(stage => {
+            {(['no_show','disqualified','closed_won','closed_lost'] as PipelineStage[]).map(stage => {
               const colLeads = archivedLeads.filter(l => l.stage === stage)
               if (colLeads.length === 0) return null
               const stageLabel = ALL_STAGES.find(s => s.stage === stage)?.label || stage
