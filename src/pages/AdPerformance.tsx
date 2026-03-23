@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SEED_LEADS, SEED_AD_PERFORMANCE, SEED_CREATIVES } from '../lib/seed'
+import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { PipelineStage } from '../types'

@@ -54,3 +54,6 @@ for (const [creativeId, config] of Object.entries(creativeConfig)) {
     })
   }
 }
+
+// Export combined data — real creatives + seed leads
+export { REAL_CREATIVES, REAL_AD_PERFORMANCE } from './realData'

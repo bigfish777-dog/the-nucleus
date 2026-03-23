@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
-import { SEED_CREATIVES, SEED_LEADS, SEED_AD_PERFORMANCE } from '../lib/seed'
+import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, Tag, GitBranch } from 'lucide-react'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
