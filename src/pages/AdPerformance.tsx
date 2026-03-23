@@ -9,15 +9,17 @@ const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface 
 
 type SortKey = 'spend' | 'leads' | 'closes' | 'roas' | 'cpa' | 'showRate' | 'cpl'
 
-const STAGE_LABELS: Record<PipelineStage, string> = {
-  booked: 'Booked',  no_show: 'No-Show', disqualified: 'Disqualified',
-  qualified: 'Qualified', second_call_booked: '2nd Call', proposal_sent: 'Proposal',
+const STAGE_LABELS: {[key: string]: string} = {
+  booked: 'Call Booked', no_show: 'No-Show', disqualified: "DQ'd",
+  qualified: 'Awaiting Proposal', second_call_booked: 'Awaiting Proposal',
+  proposal_sent: 'Proposal Sent', proposal_live: 'Proposal Live',
   closed_won: 'Closed Won', closed_lost: 'Closed Lost', abandoned: 'Abandoned',
+  cancelled: 'Cancelled', spam: 'Spam', test: 'Test', second_call_no_show: '2nd No-Show',
 }
-const STAGE_COLORS: Record<PipelineStage, string> = {
-  booked: teal, showed: teal, no_show: pink, disqualified: pink,
-  qualified: amber, second_call_booked: amber, proposal_sent: amber,
-  closed_won: green, closed_lost: pink, abandoned: muted,
+const STAGE_COLORS: {[key: string]: string} = {
+  booked: teal, no_show: pink, disqualified: pink, cancelled: pink, spam: pink, test: muted,
+  qualified: amber, second_call_booked: amber, proposal_sent: amber, proposal_live: amber,
+  closed_won: green, closed_lost: pink, abandoned: muted, second_call_no_show: pink,
 }
 
 export default function AdPerformance() {
