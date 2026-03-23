@@ -98,6 +98,7 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange }: {
   lead: Lead; onClose: () => void
   onStageChange: (id: string, stage: PipelineStage) => void
   onValueChange: (id: string, field: 'proposal_value' | 'revenue', value: number) => void
+  onFieldChange: (id: string, field: string, value: string) => void
 }) {
   const creative = lead.utm_content ? creativeMap[lead.utm_content] : null
   return (
@@ -184,19 +185,42 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange }: {
             </div>
           )}
 
-          {/* Contact */}
+          {/* Contact — editable */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Contact</p>
-            <div className="space-y-1.5">
-              {[['Email', lead.email],['Phone', lead.phone],
-                ['1st call', lead.call_datetime ? new Date(lead.call_datetime).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : null],
-                ['2nd call', lead.second_call_datetime ? new Date(lead.second_call_datetime).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : null],
-              ].filter(([,v])=>v).map(([l,v])=>(
-                <div key={l as string} className="flex justify-between text-sm">
-                  <span style={{color:muted}}>{l}</span>
-                  <span style={{color:'#F0F2F8'}}>{v}</span>
+            <div className="space-y-2">
+              {[
+                { label: 'Name', field: 'name', value: lead.name, type: 'text' },
+                { label: 'Email', field: 'email', value: lead.email, type: 'email' },
+                { label: 'Phone', field: 'phone', value: lead.phone, type: 'tel' },
+              ].map(({ label, field, value, type }) => (
+                <div key={field} className="flex items-center gap-3">
+                  <span className="text-xs w-12 flex-shrink-0" style={{ color: muted }}>{label}</span>
+                  <input
+                    type={type}
+                    defaultValue={value || ''}
+                    placeholder={`Enter ${label.toLowerCase()}`}
+                    onBlur={e => {
+                      const v = e.target.value.trim()
+                      if (v !== (value || '')) onFieldChange(lead.id, field, v)
+                    }}
+                    className="flex-1 px-2.5 py-1.5 rounded-md text-sm"
+                    style={{ background: surface, border: `1px solid ${border}`, color: '#F0F2F8' }}
+                  />
                 </div>
               ))}
+              {lead.call_datetime && (
+                <div className="flex justify-between text-sm pt-1">
+                  <span style={{ color: muted }}>1st call</span>
+                  <span style={{ color: '#F0F2F8' }}>{new Date(lead.call_datetime).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+              )}
+              {lead.second_call_datetime && (
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: muted }}>2nd call</span>
+                  <span style={{ color: '#F0F2F8' }}>{new Date(lead.second_call_datetime).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -268,6 +292,15 @@ export default function Pipeline() {
     }
     load()
   }, [])
+
+  const updateField = async (id: string, field: string, value: string) => {
+    setLeads(p => p.map(l => l.id === id ? { ...l, [field]: value } : l))
+    if (selected?.id === id) setSelected(p => p ? { ...p, [field]: value } : null)
+    try {
+      const { supabase } = await import('../lib/supabase')
+      await supabase.from('leads').update({ [field]: value, updated_at: new Date().toISOString() }).eq('id', id)
+    } catch { /* offline */ }
+  }
 
   const updateValue = async (id: string, field: 'proposal_value' | 'revenue', value: number) => {
     setLeads(p => p.map(l => l.id === id ? { ...l, [field]: value } : l))
@@ -359,7 +392,7 @@ export default function Pipeline() {
         </div>
       )}
 
-      {selected && <LeadDetail lead={selected} onClose={() => setSelected(null)} onStageChange={updateStage} onValueChange={updateValue} />}
+      {selected && <LeadDetail lead={selected} onClose={() => setSelected(null)} onStageChange={updateStage} onValueChange={updateValue} onFieldChange={updateField} />}
     </div>
   )
 }
