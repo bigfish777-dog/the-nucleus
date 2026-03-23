@@ -154,7 +154,7 @@ export default function Dashboard() {
         <MetricCard label="Show rate (30d)" value={`${liveShowRate}%`}
           sub={showRate >= 70 ? 'On target' : 'Below 70% target'}
           trend={showRate >= 70 ? 'up' : 'down'} />
-        <MetricCard label="Live proposals" value={String(liveProposals)}
+        <MetricCard label="Live proposals" value={String(liveProposalsSent)}
           sub="Awaiting decision" color={amber} />
         <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
