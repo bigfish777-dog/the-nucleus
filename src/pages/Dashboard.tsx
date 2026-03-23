@@ -86,13 +86,19 @@ const weeklyData = Array.from({ length: 12 }, (_, i) => {
   return { label: `W${12-i}`, booked, qual, props, spend: Math.round(spend) }
 }).reverse()
 
-// Funnel data
+// Funnel data — Leads → Calls Booked → Attended → Proposals Sent → Closed
+const totalLeads = leads.length  // all opt-ins
+const callsBooked = leads.filter(l => l.booking_completed).length
+const attended = leads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost','abandoned'].includes(l.stage)).length
+const proposalsSent = leads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost','abandoned'].includes(l.stage) && l.proposal_value && Number(l.proposal_value) > 0).length
+const closedWon = leads.filter(l=>l.stage==='closed_won').length
+
 const funnelData = [
-  { stage: 'Booked', count: allBooked, pct: 100 },
-  { stage: 'Showed', count: showed, pct: allBooked ? Math.round(showed/allBooked*100) : 0 },
-  { stage: 'Qualified', count: qualifiedLeads, pct: allBooked ? Math.round(qualifiedLeads/allBooked*100) : 0 },
-  { stage: 'Proposal', count: leads.filter(l=>['proposal_sent','closed_won'].includes(l.stage)).length, pct: allBooked ? Math.round(leads.filter(l=>['proposal_sent','closed_won'].includes(l.stage)).length/allBooked*100) : 0 },
-  { stage: 'Closed', count: leads.filter(l=>l.stage==='closed_won').length, pct: allBooked ? Math.round(leads.filter(l=>l.stage==='closed_won').length/allBooked*100) : 0 },
+  { stage: 'Leads', count: totalLeads, pct: 100, color: teal },
+  { stage: 'Calls Booked', count: callsBooked, pct: totalLeads ? Math.round(callsBooked/totalLeads*100) : 0, color: teal },
+  { stage: 'Attended', count: attended, pct: callsBooked ? Math.round(attended/callsBooked*100) : 0, color: amber },
+  { stage: 'Proposals Sent', count: proposalsSent, pct: attended ? Math.round(proposalsSent/attended*100) : 0, color: pink },
+  { stage: 'Closed Won', count: closedWon, pct: proposalsSent ? Math.round(closedWon/proposalsSent*100) : 0, color: '#22C55E' },
 ]
 
 // Ad spend vs revenue (weekly)

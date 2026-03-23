@@ -10,7 +10,7 @@ const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface 
 type SortKey = 'spend' | 'leads' | 'closes' | 'roas' | 'cpa' | 'showRate' | 'cpl'
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
-  booked: 'Booked', showed: 'Showed', no_show: 'No-Show', disqualified: 'Disqualified',
+  booked: 'Booked',  no_show: 'No-Show', disqualified: 'Disqualified',
   qualified: 'Qualified', second_call_booked: '2nd Call', proposal_sent: 'Proposal',
   closed_won: 'Closed Won', closed_lost: 'Closed Lost', abandoned: 'Abandoned',
 }
@@ -186,8 +186,8 @@ export default function AdPerformance() {
                                   <p className="text-sm font-medium" style={{ color: '#F0F2F8' }}>{lead.name}</p>
                                   <p className="text-xs" style={{ color: muted }}>{lead.industry}</p>
                                 </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: `${STAGE_COLORS[lead.stage]}15`, color: STAGE_COLORS[lead.stage] }}>
-                                  {STAGE_LABELS[lead.stage]}
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded" style={{ background: `${STAGE_COLORS[lead.stage] || muted}15`, color: STAGE_COLORS[lead.stage] || muted }}>
+                                  {STAGE_LABELS[lead.stage] || lead.stage}
                                 </span>
                               </div>
                             ))}

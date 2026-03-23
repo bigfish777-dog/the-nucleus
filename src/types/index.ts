@@ -1,14 +1,18 @@
 export type PipelineStage =
   | 'booked'
-  | 'showed'
+  | 'cancelled'
   | 'no_show'
   | 'disqualified'
-  | 'qualified'
-  | 'second_call_booked'
-  | 'proposal_sent'
+  | 'spam'
+  | 'test'
+  | 'qualified'              // attended 1st call, proposal being built
+  | 'second_call_booked'     // = proposal sent + 2nd call in diary
+  | 'proposal_sent'          // proposal out, 2nd call booked (same thing)
+  | 'proposal_live'          // 2nd call happened, still deciding
+  | 'second_call_no_show'
   | 'closed_won'
   | 'closed_lost'
-  | 'abandoned'
+  | 'abandoned'              // gone cold after proposal
 
 export interface Lead {
   id: string
@@ -64,14 +68,4 @@ export interface AdPerformanceDaily {
   spend: number
   impressions: number
   clicks: number
-}
-
-export interface StageHistory {
-  id: string
-  lead_id: string
-  from_stage: PipelineStage
-  to_stage: PipelineStage
-  changed_at: string
-  changed_by: string
-  auto_reason?: string
 }
