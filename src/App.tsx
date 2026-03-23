@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { HashRouter as BrowserRouter, Routes, Route } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -5,13 +6,20 @@ import Pipeline from './pages/Pipeline'
 import AdPerformance from './pages/AdPerformance'
 import CreativeLibrary from './pages/CreativeLibrary'
 import Settings from './pages/Settings'
+import Login, { isAuthenticated } from './pages/Login'
 import './index.css'
 
 export default function App() {
+  const [authed, setAuthed] = useState(isAuthenticated())
+
+  if (!authed) {
+    return <Login onSuccess={() => setAuthed(true)} />
+  }
+
   return (
     <BrowserRouter>
       <div className="flex min-h-screen" style={{ background: '#111827' }}>
-        <Sidebar />
+        <Sidebar onSignOut={() => { localStorage.removeItem('nucleus_auth'); setAuthed(false) }} />
         <main className="ml-56 flex-1 min-h-screen overflow-y-auto p-8"
           style={{ background: '#111827' }}>
           <Routes>

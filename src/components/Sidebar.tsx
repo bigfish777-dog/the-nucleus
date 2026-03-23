@@ -9,7 +9,7 @@ const nav = [
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
 
-export function Sidebar() {
+export function Sidebar({ onSignOut }: { onSignOut?: () => void }) {
   return (
     <aside className="fixed left-0 top-0 h-screen w-56 flex flex-col z-30"
       style={{ background: '#0F1117', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
@@ -44,7 +44,15 @@ export function Sidebar() {
       {/* Footer */}
       <div className="px-6 py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.06)' }}>
         <p className="text-[11px] font-medium" style={{ color: '#8891A8' }}>Test Tube Marketing</p>
-        <p className="text-[10px]" style={{ color: '#8891A8' }}>Acquisition Command Centre</p>
+        <p className="text-[10px] mb-3" style={{ color: '#8891A8' }}>Acquisition Command Centre</p>
+        {onSignOut && (
+          <button onClick={onSignOut} className="text-[11px] font-medium transition-colors"
+            style={{ color: '#8891A8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+            onMouseEnter={e => (e.currentTarget.style.color = '#EF4444')}
+            onMouseLeave={e => (e.currentTarget.style.color = '#8891A8')}>
+            Sign out
+          </button>
+        )}
       </div>
     </aside>
   )
