@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SEED_LEADS, SEED_CREATIVES } from '../lib/seed'
+import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
 import { X } from 'lucide-react'
 

@@ -1,4 +1,4 @@
-import { SEED_LEADS, SEED_AD_PERFORMANCE, SEED_CREATIVES } from '../lib/seed'
+import { REAL_LEADS as SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import {
   LineChart, Line, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
