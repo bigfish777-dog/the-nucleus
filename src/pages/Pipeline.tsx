@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
+import { updateLeadStage } from '../lib/supabase'
 import { X } from 'lucide-react'
 
 const pink = '#FF0D64'
@@ -213,9 +214,12 @@ export default function Pipeline() {
   const [leads, setLeads] = useState<Lead[]>(SEED_LEADS)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
 
-  const updateStage = (id: string, stage: PipelineStage) => {
+  const updateStage = async (id: string, stage: PipelineStage) => {
+    const current = leads.find(l => l.id === id)
     setLeads(prev => prev.map(l => l.id === id ? { ...l, stage, updated_at: new Date().toISOString() } : l))
     if (selectedLead?.id === id) setSelectedLead(prev => prev ? { ...prev, stage } : null)
+    // Persist to Supabase (best-effort — UI already updated)
+    try { await updateLeadStage(id, stage, current?.stage) } catch(e) { /* offline/seed data */ }
   }
 
   return (
