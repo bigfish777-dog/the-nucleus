@@ -57,7 +57,6 @@ const last4WeeksSpend = SEED_AD_PERFORMANCE
   .filter(p => { const d = new Date(p.date); const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-28); return d >= cutoff; })
   .reduce((s, p) => s + p.spend, 0)
 
-const qualifiedLeads = leads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
