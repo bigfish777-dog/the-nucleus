@@ -3,7 +3,7 @@ import {
   LineChart, Line, ComposedChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
-import React from 'react'
+import React, { useState } from 'react'
 import type { Lead } from '../types'
 import { TrendingUp, TrendingDown, AlertCircle, Calendar } from 'lucide-react'
 
@@ -71,7 +71,7 @@ const upcomingCalls = leads
 
 // ─── Chart data ───────────────────────────────────────────────────────────────
 // 12-week weekly trend
-const weeklyData = Array.from({ length: 12 }, (_, i) => {
+const _weeklyData = Array.from({ length: 12 }, (_, i) => {
   const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7)
   const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
   const booked = leads.filter(l => l.booked_at && new Date(l.booked_at) >= wStart && new Date(l.booked_at) < wEnd).length
@@ -83,23 +83,15 @@ const weeklyData = Array.from({ length: 12 }, (_, i) => {
 
 
 
-// Ad spend vs revenue (weekly)
-const spendRevenueData = weeklyData.map(w => ({
-  label: w.label,
-  spend: w.spend,
-  revenue: leads.filter(l => l.revenue && l.stage==='closed_won' && l.updated_at).reduce((s,l) => s + (l.revenue||0), 0) / 12, // distributed evenly for demo
-}))
-
-// Running average cost per call
-const runningAvgData = weeklyData.map((w, i) => {
-  const cumSpend = weeklyData.slice(0, i+1).reduce((s,d) => s+d.spend, 0)
-  const cumBooked = weeklyData.slice(0, i+1).reduce((s,d) => s+d.booked, 0)
-  return { label: w.label, cpc: cumBooked ? Math.round(cumSpend/cumBooked) : 0, weekly: w.booked ? Math.round(w.spend/w.booked) : 0 }
-})
+// Placeholders — real data built in component using liveLeads
 
 const creativeMap = Object.fromEntries(SEED_CREATIVES.map(c => [c.utm_content_value, c.name]))
 
+type Timeframe = '4w' | '8w' | '12w'
+
 export default function Dashboard() {
+  const [timeframe, setTimeframe] = useState<Timeframe>('12w')
+  const tfWeeks = timeframe === '4w' ? 4 : timeframe === '8w' ? 8 : 12
   const [liveLeads, setLiveLeads] = React.useState<Lead[] | null>(null)
   React.useEffect(() => {
     async function load() {
@@ -139,6 +131,51 @@ export default function Dashboard() {
   const liveNoContact = activeLeadsData.filter((l: Lead) => l.last_contact_at && (now.getTime() - new Date(l.last_contact_at).getTime()) > 14 * 86400000 && !['closed_won','closed_lost','abandoned','spam','test','no_show','disqualified'].includes(l.stage))
   const liveUpcomingSecond = activeLeadsData.filter((l: Lead) => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= now)
 
+  // ── Live chart data (recalculated when liveLeads or timeframe changes) ────
+  const weeklyChartData = Array.from({ length: tfWeeks }, (_, i) => {
+    const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7)
+    const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
+    const wStartISO = wStart.toISOString(); const wEndISO = wEnd.toISOString()
+    // Booked: use last_contact_at or booked_at or opted_in_at
+    const booked = activeLeadsData.filter((l: Lead) => {
+      const d = l.booked_at || l.last_contact_at || l.opted_in_at
+      return d && d >= wStartISO && d < wEndISO && l.booking_completed
+    }).length
+    // Attended: use last_contact_at for attended stages
+    const qual = activeLeadsData.filter((l: Lead) => {
+      const d = l.last_contact_at || l.call_datetime
+      return d && d >= wStartISO && d < wEndISO &&
+        ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)
+    }).length
+    // Proposals: use proposal_sent_at
+    const props = activeLeadsData.filter((l: Lead) =>
+      l.proposal_sent_at && l.proposal_sent_at >= wStartISO && l.proposal_sent_at < wEndISO
+    ).length
+    const spend = SEED_AD_PERFORMANCE.filter(p => p.date >= wStartISO.slice(0,10) && p.date < wEndISO.slice(0,10))
+      .reduce((s, p) => s + p.spend, 0)
+    return { label: `W${tfWeeks-i}`, booked, qual, props, spend: Math.round(spend) }
+  }).reverse()
+
+  // Ad spend vs revenue by week
+  const liveSpendRevenueData = weeklyChartData.map(w => {
+    // Match revenue to week using last_contact_at of closed_won leads
+    const weekIdx = weeklyChartData.indexOf(w)
+    const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - (tfWeeks - weekIdx - 1) * 7)
+    const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
+    const rev = activeLeadsData
+      .filter((l: Lead) => l.stage === 'closed_won' && l.revenue && l.last_contact_at &&
+        l.last_contact_at >= wStart.toISOString() && l.last_contact_at < wEnd.toISOString())
+      .reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+    return { label: w.label, spend: w.spend, revenue: rev }
+  })
+
+  // Running average cost per call
+  const liveRunningAvgData = weeklyChartData.map((w, i) => {
+    const cumSpend = weeklyChartData.slice(0, i+1).reduce((s,d) => s+d.spend, 0)
+    const cumBooked = weeklyChartData.slice(0, i+1).reduce((s,d) => s+d.booked, 0)
+    return { label: w.label, cpc: cumBooked ? Math.round(cumSpend/cumBooked) : 0, weekly: w.booked ? Math.round(w.spend/w.booked) : 0 }
+  })
+
   const funnelData = [
     { stage: 'Leads', count: liveTotalLeads, pct: 100, color: teal },
     { stage: 'Calls Booked', count: liveAllBooked, pct: liveTotalLeads ? Math.round(liveAllBooked/liveTotalLeads*100) : 0, color: teal },
@@ -176,12 +213,23 @@ export default function Dashboard() {
           sub={`${SEED_CREATIVES.filter(c=>c.status==='paused').length} paused`} />
       </div>
 
+      {/* ── Timeframe selector ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <p style={{ fontSize: 11, color: muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Timeframe:</p>
+        {(['4w', '8w', '12w'] as const).map(tf => (
+          <button key={tf} onClick={() => setTimeframe(tf)}
+            style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${timeframe === tf ? teal : border}`, background: timeframe === tf ? `${teal}15` : 'transparent', color: timeframe === tf ? teal : muted, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            {tf === '4w' ? '4 weeks' : tf === '8w' ? '8 weeks' : '12 weeks'}
+          </button>
+        ))}
+      </div>
+
       {/* ── Charts row 1 ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: muted }}>Weekly — booked, qualified & proposals (12 weeks)</p>
           <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={weeklyData}>
+            <LineChart data={weeklyChartData}>
               <CartesianGrid strokeDasharray="3 3" stroke={border} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
@@ -218,7 +266,7 @@ export default function Dashboard() {
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: muted }}>Ad spend vs revenue — 12 weeks</p>
           <ResponsiveContainer width="100%" height={160}>
-            <ComposedChart data={spendRevenueData}>
+            <ComposedChart data={liveSpendRevenueData}>
               <CartesianGrid strokeDasharray="3 3" stroke={border} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
               <YAxis yAxisId="left" tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
@@ -234,7 +282,7 @@ export default function Dashboard() {
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-1" style={{ color: muted }}>Cost per call — weekly vs running average</p>
           <ResponsiveContainer width="100%" height={160}>
-            <LineChart data={runningAvgData}>
+            <LineChart data={liveRunningAvgData}>
               <CartesianGrid strokeDasharray="3 3" stroke={border} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} tickFormatter={v => `£${v}`} />
