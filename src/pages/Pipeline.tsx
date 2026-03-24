@@ -20,6 +20,7 @@ const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string 
 
 // ── Archived stages (tracked but not in main pipeline) ───────────────────────
 const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
+  { stage: 'qualified', label: 'Attended (triage)' },
   { stage: 'no_show', label: 'No-Show' },
   { stage: 'second_call_no_show', label: '2nd Call No-Show' },
   { stage: 'cancelled', label: 'Cancelled' },
