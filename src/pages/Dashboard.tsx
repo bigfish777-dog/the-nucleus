@@ -52,14 +52,12 @@ const lastWeekBooked = leads.filter(l => l.booked_at && new Date(l.booked_at) >=
 const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
 const allBooked = leads.filter(l => l.booking_completed).length
 const showRate = allBooked ? Math.round((showed / allBooked) * 100) : 0
-const revThisQ = leads.filter(l => l.revenue && l.stage === 'closed_won').reduce((s, l) => s + (l.revenue || 0), 0)
 
 const last4WeeksSpend = SEED_AD_PERFORMANCE
   .filter(p => { const d = new Date(p.date); const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-28); return d >= cutoff; })
   .reduce((s, p) => s + p.spend, 0)
 
 const qualifiedLeads = leads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length
-const costPerQualified = qualifiedLeads ? Math.round(last4WeeksSpend / qualifiedLeads) : 0
 
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
