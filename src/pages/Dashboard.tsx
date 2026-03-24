@@ -128,7 +128,6 @@ export default function Dashboard() {
   const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   // Exclude Michael O'Reilly (referral) from ad-attributed revenue on ROAS calc
   const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
-  const liveRevFromAds = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.utm_source !== 'referral').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
   const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
   const liveCostPerCall = liveAllBooked ? Math.round(last4WeeksSpend / liveAllBooked) : 0
