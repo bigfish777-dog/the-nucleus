@@ -71,15 +71,6 @@ const upcomingCalls = leads
 
 // ─── Chart data ───────────────────────────────────────────────────────────────
 // 12-week weekly trend
-const _weeklyData = Array.from({ length: 12 }, (_, i) => {
-  const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7)
-  const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
-  const booked = leads.filter(l => l.booked_at && new Date(l.booked_at) >= wStart && new Date(l.booked_at) < wEnd).length
-  const qual = leads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage) && l.call_datetime && new Date(l.call_datetime) >= wStart && new Date(l.call_datetime) < wEnd).length
-  const props = leads.filter(l => l.proposal_sent_at && new Date(l.proposal_sent_at) >= wStart && new Date(l.proposal_sent_at) < wEnd).length
-  const spend = SEED_AD_PERFORMANCE.filter(p => new Date(p.date) >= wStart && new Date(p.date) < wEnd).reduce((s, p) => s + p.spend, 0)
-  return { label: `W${12-i}`, booked, qual, props, spend: Math.round(spend) }
-}).reverse()
 
 
 
