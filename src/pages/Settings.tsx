@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 
 const CLIENT_ID = '701375376868-pshns7bbcbupqqgbvgusnpes6t555nhn.apps.googleusercontent.com'
-const REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}` : 'https://dash.testtubemarketing.com'
+const REDIRECT_URI = 'https://dash.testtubemarketing.com'
 const SUPABASE_URL = 'https://oirnxlidjgsbcyhtxkse.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s'
 
