@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 
 const CLIENT_ID = '701375376868-pshns7bbcbupqqgbvgusnpes6t555nhn.apps.googleusercontent.com'
 const REDIRECT_URI = 'https://dash.testtubemarketing.com'
@@ -27,6 +27,104 @@ async function getCalendarToken(): Promise<string | null> {
   })
   const data = await res.json()
   return data?.[0]?.value || null
+}
+
+const TEMPLATES = [
+  { key: 'email_confirmation_subject', label: 'Confirmation Email — Subject', type: 'email' },
+  { key: 'email_confirmation_body', label: 'Confirmation Email — Body', type: 'email', multiline: true },
+  { key: 'email_reminder_24h_subject', label: '24hr Reminder Email — Subject', type: 'email' },
+  { key: 'email_reminder_24h_body', label: '24hr Reminder Email — Body', type: 'email', multiline: true },
+  { key: 'email_reminder_2h_subject', label: '2hr Reminder Email — Subject', type: 'email' },
+  { key: 'email_reminder_2h_body', label: '2hr Reminder Email — Body', type: 'email', multiline: true },
+  { key: 'whatsapp_confirmation', label: 'WhatsApp Confirmation Message', type: 'whatsapp', multiline: true },
+  { key: 'whatsapp_reminder_24h', label: 'WhatsApp 24hr Reminder', type: 'whatsapp', multiline: true },
+  { key: 'whatsapp_reminder_2h', label: 'WhatsApp 2hr Reminder', type: 'whatsapp', multiline: true },
+]
+
+function TemplateEditor() {
+  const [templates, setTemplates] = React.useState<Record<string, string>>({})
+  const [saving, setSaving] = React.useState<string | null>(null)
+  const [saved, setSaved] = React.useState<string | null>(null)
+  const [activeTab, setActiveTab] = React.useState<'email' | 'whatsapp'>('email')
+
+  React.useEffect(() => {
+    fetch(`${SUPABASE_URL}/rest/v1/settings?key=like.email*&select=key,value`, {
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+    }).then(r => r.json()).then(data => {
+      const t: Record<string, string> = {}
+      data.forEach((row: {key: string; value: string}) => { t[row.key] = row.value })
+      return t
+    }).then(emailTemplates =>
+      fetch(`${SUPABASE_URL}/rest/v1/settings?key=like.whatsapp*&select=key,value`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+      }).then(r => r.json()).then(data => {
+        data.forEach((row: {key: string; value: string}) => { emailTemplates[row.key] = row.value })
+        setTemplates(emailTemplates)
+      })
+    )
+  }, [])
+
+  const save = async (key: string, value: string) => {
+    setSaving(key)
+    await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
+      method: 'POST',
+      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+      body: JSON.stringify({ key, value })
+    })
+    setSaving(null)
+    setSaved(key)
+    setTimeout(() => setSaved(null), 2000)
+  }
+
+  const filtered = TEMPLATES.filter(t => t.type === activeTab)
+
+  return (
+    <div style={{ background: surface, border: `1px solid ${border}`, borderRadius: 12, padding: '24px 28px', marginBottom: 20 }}>
+      <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: muted, marginBottom: 20 }}>
+        Email & WhatsApp Templates
+      </p>
+      <p style={{ fontSize: 13, color: muted, marginBottom: 20 }}>
+        Use <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{"{{first_name}}"}</code>, <code style={{ background: 'rgba(255,255,255,0.08)', padding: '1px 6px', borderRadius: 4, fontSize: 12 }}>{"{{call_time}}"}</code> as placeholders.
+      </p>
+
+      {/* Tab toggle */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        {(['email', 'whatsapp'] as const).map(tab => (
+          <button key={tab} onClick={() => setActiveTab(tab)}
+            style={{ padding: '6px 16px', borderRadius: 6, border: `1px solid ${activeTab === tab ? teal : border}`, background: activeTab === tab ? `${teal}15` : 'transparent', color: activeTab === tab ? teal : muted, fontSize: 13, fontWeight: 600, cursor: 'pointer', textTransform: 'capitalize' }}>
+            {tab === 'email' ? '📧 Email' : '💬 WhatsApp'}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {filtered.map(({ key, label, multiline }) => (
+          <div key={key}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: '#F0F2F8' }}>{label}</label>
+              {saved === key && <span style={{ fontSize: 11, color: green }}>✓ Saved</span>}
+            </div>
+            {multiline ? (
+              <textarea
+                defaultValue={templates[key] || ''}
+                rows={label.includes('Body') ? 8 : 3}
+                onBlur={e => save(key, e.target.value)}
+                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, lineHeight: 1.6, resize: 'vertical', outline: 'none', fontFamily: 'monospace', boxSizing: 'border-box' }}
+              />
+            ) : (
+              <input
+                type="text"
+                defaultValue={templates[key] || ''}
+                onBlur={e => save(key, e.target.value)}
+                style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, outline: 'none', boxSizing: 'border-box' }}
+              />
+            )}
+            {saving === key && <p style={{ fontSize: 11, color: muted, marginTop: 4 }}>Saving...</p>}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function Settings() {
@@ -165,6 +263,9 @@ export default function Settings() {
           ))}
         </div>
       </Card>
+
+      {/* Email & WhatsApp Templates */}
+      <TemplateEditor />
 
       {/* API integrations */}
       <Card title="Connected Integrations">
