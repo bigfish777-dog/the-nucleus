@@ -370,6 +370,22 @@ export default function Pipeline() {
 
       {loading && <div className="flex items-center justify-center py-20"><div className="text-sm" style={{ color: muted }}>Loading from database...</div></div>}
 
+      {/* Search results */}
+      {!loading && searchQuery.length >= 2 && (
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>
+            Search results ({searchResults.length})
+          </p>
+          {searchResults.length === 0 ? (
+            <p className="text-sm" style={{ color: muted }}>No leads found for &ldquo;{search}&rdquo;</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8 }}>
+              {searchResults.map(lead => <LeadCard key={lead.id} lead={lead} onClick={() => setSelected(lead)} />)}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Active pipeline — kanban on desktop, list on mobile */}
       {!loading && !searchQuery && (
         <>
