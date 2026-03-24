@@ -29,17 +29,6 @@ async function getCalendarToken(): Promise<string | null> {
   return data?.[0]?.value || null
 }
 
-async function saveCalendarToken(refreshToken: string, accessToken: string) {
-  // Upsert both tokens
-  for (const [key, value] of [['google_refresh_token', refreshToken], ['google_access_token', accessToken]]) {
-    await fetch(`${SUPABASE_URL}/rest/v1/settings`, {
-      method: 'POST',
-      headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates' },
-      body: JSON.stringify({ key, value })
-    })
-  }
-}
-
 export default function Settings() {
   const [calendarConnected, setCalendarConnected] = useState(false)
   const [calendarLoading, setCalendarLoading] = useState(true)
@@ -180,23 +169,21 @@ export default function Settings() {
       {/* API integrations */}
       <Card title="Connected Integrations">
         {[
-          { name: 'Meta Ads API', status: 'connected', detail: 'act_1240226554066627' },
-          { name: 'Supabase', status: 'connected', detail: 'oirnxlidjgsbcyhtxkse.supabase.co' },
-          { name: 'Fireflies', status: 'connected', detail: 'Transcript processing ready' },
-          { name: 'Gmail SMTP', status: 'connected', detail: 'bigfish@testtubemarketing.com' },
-          { name: 'WhatsApp Business', status: 'partial', detail: 'Phone ID configured, token needed' },
-          { name: 'Calendly', status: 'retiring', detail: 'Being replaced by The Nucleus' },
-          { name: 'Perspective Funnels', status: 'retiring', detail: 'Being replaced by book.testtubemarketing.com' },
-        ].map(({ name, detail }) => (
+          { name: 'Meta Ads API', color: green, label: '✓ Connected', detail: 'act_1240226554066627' },
+          { name: 'Supabase', color: green, label: '✓ Connected', detail: 'oirnxlidjgsbcyhtxkse.supabase.co' },
+          { name: 'Fireflies', color: green, label: '✓ Connected', detail: 'Transcript processing ready' },
+          { name: 'Gmail SMTP', color: green, label: '✓ Connected', detail: 'bigfish@testtubemarketing.com' },
+          { name: 'WhatsApp Business', color: teal, label: 'Partial', detail: 'Phone ID configured, token needed' },
+          { name: 'Calendly', color: pink, label: 'Retiring', detail: 'Being replaced by The Nucleus' },
+          { name: 'Perspective Funnels', color: pink, label: 'Retiring', detail: 'Being replaced by book.testtubemarketing.com' },
+        ].map(({ name, color, label, detail }) => (
           <div key={name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${border}` }}>
             <div>
               <p style={{ fontSize: 14, fontWeight: 600, color: '#F0F2F8', marginBottom: 2 }}>{name}</p>
               <p style={{ fontSize: 12, color: muted }}>{detail}</p>
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
-              background: status === 'connected' ? `${green}20` : status === 'partial' ? `${teal}15` : `${pink}15`,
-              color: status === 'connected' ? green : status === 'partial' ? teal : pink }}>
-              {status === 'connected' ? '✓ Connected' : status === 'partial' ? 'Partial' : 'Retiring'}
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: `${color}20`, color: color }}>
+              {label}
             </span>
           </div>
         ))}
