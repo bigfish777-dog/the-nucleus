@@ -119,8 +119,8 @@ export default function Dashboard() {
   const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
   React.useEffect(() => {
-    const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-28); const cutoffStr = cutoff.toISOString().slice(0,10)
-    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?date=gte.${cutoffStr}&select=spend`, {
+    // Load ALL time ad spend for accurate cost per call
+    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?select=spend&limit=500`, {
       headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s' }
     }).then(r => r.json()).then(rows => setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))).catch(() => {})
   }, [])
@@ -207,7 +207,7 @@ export default function Dashboard() {
           sub="Awaiting decision" color={amber} />
         <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
-        <MetricCard label="Cost per call (4wk)" value={`£${liveCostPerCall}`}
+        <MetricCard label="Cost per call (all time)" value={`£${liveCostPerCall}`}
           sub="Rolling 4-week average" />
         <MetricCard label="Cost per qualified (4wk)" value={totalQualified ? `£${Math.round((liveSpend28d || last4WeeksSpend) / totalQualified)}` : '£0'}
           sub="Calls that reached Qualified+" />
