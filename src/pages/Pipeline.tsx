@@ -279,6 +279,7 @@ export default function Pipeline() {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lead | null>(null)
   const [showArchive, setShowArchive] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -327,6 +328,14 @@ export default function Pipeline() {
   const pipelineLeads = leads.filter(l => pipelineStages.has(l.stage) && l.booking_completed)
   const archiveLeads = leads.filter(l => !pipelineStages.has(l.stage))
   const overdueCount = pipelineLeads.filter(l => isCallOverdue(l)).length
+  const searchQuery = search.toLowerCase().trim()
+  const searchResults = searchQuery.length >= 2
+    ? leads.filter(l =>
+        l.name?.toLowerCase().includes(searchQuery) ||
+        l.email?.toLowerCase().includes(searchQuery) ||
+        l.industry?.toLowerCase().includes(searchQuery)
+      )
+    : []
 
   return (
     <div className="space-y-4">
@@ -338,7 +347,20 @@ export default function Pipeline() {
             {!loading && overdueCount > 0 && <span className="ml-2 font-bold" style={{ color: amber }}>· {overdueCount} overdue</span>}
           </p>
         </div>
-        <button onClick={() => setShowArchive(!showArchive)}
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, maxWidth: 320 }}>
+        <input
+          type="text"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search leads..."
+          style={{ flex: 1, padding: '7px 12px', background: 'rgba(255,255,255,0.05)', border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, outline: 'none' }}
+        />
+        {search && (
+          <button onClick={() => setSearch('')}
+            style={{ background: 'none', border: 'none', color: muted, cursor: 'pointer', fontSize: 16, padding: '0 4px' }}>✕</button>
+        )}
+      </div>
+      <button onClick={() => setShowArchive(!showArchive)}
           className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg"
           style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>
           {showArchive ? <EyeOff size={12}/> : <Eye size={12}/>}
@@ -349,7 +371,7 @@ export default function Pipeline() {
       {loading && <div className="flex items-center justify-center py-20"><div className="text-sm" style={{ color: muted }}>Loading from database...</div></div>}
 
       {/* Active pipeline — kanban on desktop, list on mobile */}
-      {!loading && (
+      {!loading && !searchQuery && (
         <>
           {/* Desktop: kanban columns */}
           <div className="hidden md:flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 200px)' }}>
@@ -392,7 +414,7 @@ export default function Pipeline() {
       )}
 
       {/* Archive */}
-      {!loading && showArchive && (
+      {!loading && showArchive && !searchQuery && (
         <div className="mt-4">
           <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>Archive — tracked data</p>
           <div className="flex flex-col md:flex-row gap-3 md:overflow-x-auto pb-4">
