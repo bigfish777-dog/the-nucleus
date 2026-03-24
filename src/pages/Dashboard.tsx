@@ -100,8 +100,13 @@ export default function Dashboard() {
 
   // Recalculate key metrics from live data
   const liveThisWeekBooked = activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= weekAgo).length
+  // Calls booked = Marketing Growth Calls only (Jan 2026+)
+  // Excludes old Calendly types from 2025 and pure opt-ins
+  const mgcStart = '2026-01-01'
   const liveAllBooked = activeLeadsData.filter((l: Lead) => 
-    !['abandoned'].includes(l.stage) && l.booking_completed
+    l.booking_completed &&
+    !['abandoned', 'spam', 'test'].includes(l.stage) &&
+    ((l.call_datetime || '') >= mgcStart || (l.booked_at || '') >= mgcStart)
   ).length
   const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
   const liveShowRate = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
@@ -188,7 +193,7 @@ export default function Dashboard() {
           sub={`${thisWeekBooked >= lastWeekBooked ? '+' : ''}${thisWeekBooked - lastWeekBooked} vs last week`}
           trend={thisWeekBooked >= lastWeekBooked ? 'up' : 'down'} color={teal} />
         <MetricCard label="Show rate (30d)" value={`${liveShowRate}%`}
-          sub={showRate >= 70 ? 'On target' : 'Below 70% target'}
+          sub={`${liveAllBooked} calls booked total`}
           trend={showRate >= 70 ? 'up' : 'down'} />
         <MetricCard label="Live proposals" value={String(liveProposalsSent)}
           sub="Awaiting decision" color={amber} />
