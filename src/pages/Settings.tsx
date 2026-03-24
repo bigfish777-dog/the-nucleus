@@ -272,7 +272,7 @@ export default function Settings() {
           { name: 'Supabase', color: green, label: '✓ Connected', detail: 'oirnxlidjgsbcyhtxkse.supabase.co' },
           { name: 'Fireflies', color: green, label: '✓ Connected', detail: 'Transcript processing ready' },
           { name: 'Gmail SMTP', color: green, label: '✓ Connected', detail: 'bigfish@testtubemarketing.com' },
-          { name: 'WhatsApp Business', color: teal, label: 'Partial', detail: 'Phone ID configured, token needed' },
+          { name: 'WhatsApp Business', color: teal, label: 'Token active', detail: '+44 7457 411093 · Phone ID: 1043445438845393 · Asset assignment needed' },
           { name: 'Calendly', color: pink, label: 'Retiring', detail: 'Being replaced by The Nucleus' },
           { name: 'Perspective Funnels', color: pink, label: 'Retiring', detail: 'Being replaced by book.testtubemarketing.com' },
         ].map(({ name, color, label, detail }) => (

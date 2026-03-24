@@ -116,7 +116,8 @@ export default function Dashboard() {
   // Use last_contact_at as close date (stored there to avoid auto-update trigger overwriting)
   const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   // Exclude Michael O'Reilly (referral) from ad-attributed revenue on ROAS calc
-  const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // Revenue closed = ALL TIME total from closed won leads
+  const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
   const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
@@ -128,6 +129,8 @@ export default function Dashboard() {
   }, [])
   const liveCostPerCall = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
   const liveClosedWon = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+  // Cost per qualified = 28d spend / total qualified leads (all time)
+  const totalQualified = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
 
   // Live flags from Supabase data
   const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < now)
@@ -209,10 +212,10 @@ export default function Dashboard() {
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
         <MetricCard label="Cost per call (4wk)" value={`£${liveCostPerCall}`}
           sub="Rolling 4-week average" />
-        <MetricCard label="Cost per qualified (4wk)" value={`£${costPerQualified}`}
+        <MetricCard label="Cost per qualified (4wk)" value={totalQualified ? `£${Math.round((liveSpend28d || last4WeeksSpend) / totalQualified)}` : '£0'}
           sub="Calls that reached Qualified+" />
-        <MetricCard label="Total revenue closed" value={`£${revThisQ.toLocaleString()}`}
-          sub={`${leads.filter(l=>l.stage==='closed_won').length} deals`} color={pink} trend="up" />
+        <MetricCard label="Total revenue closed" value={`£${liveRevQ.toLocaleString()}`}
+          sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
         <MetricCard label="Active creatives" value={String(SEED_CREATIVES.filter(c=>c.status==='active').length)}
           sub={`${SEED_CREATIVES.filter(c=>c.status==='paused').length} paused`} />
       </div>
