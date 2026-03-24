@@ -150,8 +150,10 @@ export default function Settings() {
       <Card title="Email Automation">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {[
-            { label: 'Weekly report', value: 'Every Monday 7am → bigfish@ + ad@testtubemarketing.com', }            { label: '24hr reminder', value: 'Sent to leads the day before their call' },
-            { label: '2hr reminder', value: 'Sent to leads 2 hours before their call', }            { label: 'Confirmation', value: 'Sent when a call is booked via the portal' },
+            { label: 'Weekly report', value: 'Every Monday 7am → bigfish@ + ad@testtubemarketing.com' },
+            { label: '24hr reminder', value: 'Sent to leads the day before their call' },
+            { label: '2hr reminder', value: 'Sent to leads 2 hours before their call' },
+            { label: 'Confirmation', value: 'Sent when a call is booked via the portal' },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${border}` }}>
               <div>
