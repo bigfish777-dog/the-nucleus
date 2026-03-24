@@ -21,13 +21,6 @@ function Card({ children, title }: { children: React.ReactNode; title?: string }
   )
 }
 
-async function getCalendarToken(): Promise<string | null> {
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/settings?key=eq.google_refresh_token&select=value&limit=1`, {
-    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
-  })
-  const data = await res.json()
-  return data?.[0]?.value || null
-}
 
 const TEMPLATES = [
   { key: 'email_confirmation_subject', label: 'Confirmation Email — Subject', type: 'email' },
