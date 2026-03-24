@@ -135,8 +135,13 @@ export default function Settings() {
 
   // Check if already connected
   useEffect(() => {
-    getCalendarToken().then(token => {
-      setCalendarConnected(!!token)
+    // Check for either the exchanged token OR the saved auth code
+    Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/settings?key=in.(google_refresh_token,google_oauth_code)&select=key,value`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
+      }).then(r => r.json())
+    ]).then(([data]) => {
+      setCalendarConnected(data.length > 0)
       setCalendarLoading(false)
     })
 
