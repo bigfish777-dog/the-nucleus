@@ -44,11 +44,7 @@ function MetricCard({ label, value, sub, trend, color = '#F0F2F8' }: {
 // ─── Computed metrics ───────────────────────────────────────────────────────
 const leads = SEED_LEADS
 const now = new Date('2026-03-22')
-const weekAgo = new Date('2026-03-15')
-const prevWeekStart = new Date('2026-03-08')
-
-const thisWeekBooked = leads.filter(l => l.booked_at && new Date(l.booked_at) >= weekAgo).length
-const lastWeekBooked = leads.filter(l => l.booked_at && new Date(l.booked_at) >= prevWeekStart && new Date(l.booked_at) < weekAgo).length
+// These seed-level constants are superseded by live calendar-week calculations in the component
 const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
 const allBooked = leads.filter(l => l.booking_completed).length
 const showRate = allBooked ? Math.round((showed / allBooked) * 100) : 0
@@ -93,11 +89,28 @@ export default function Dashboard() {
   }, [])
 
   // Use live data if available, filter out spam/test from all metrics
-  // Exclude spam/test stages AND internal test email (bigfish@)
-  const activeLeadsData = (liveLeads || leads).filter((l: Lead) => !['spam','test'].includes(l.stage) && l.email !== 'bigfish@testtubemarketing.com')
+  // Exclude spam/test stages AND internal test email addresses
+  const activeLeadsData = (liveLeads || leads).filter((l: Lead) => 
+    !['spam','test'].includes(l.stage) && 
+    !l.email?.includes('@testtubemarketing.com')
+  )
+
+  // ── Consistent date boundaries ────────────────────────────────────────────
+  // Use real current time (not hardcoded seed date)
+  const realNow = new Date()
+  // Start of current calendar week (Monday)
+  const thisMonday = new Date(realNow)
+  thisMonday.setDate(realNow.getDate() - ((realNow.getDay() + 6) % 7))
+  thisMonday.setHours(0, 0, 0, 0)
+  // Start of last calendar week
+  const lastMonday = new Date(thisMonday)
+  lastMonday.setDate(thisMonday.getDate() - 7)
 
   // Recalculate key metrics from live data
-  const liveThisWeekBooked = activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= weekAgo).length
+  // "This week" = Mon 00:00 to now (calendar week, not rolling 7 days)
+  const liveThisWeekBooked = activeLeadsData.filter((l: Lead) => 
+    l.booked_at && new Date(l.booked_at) >= thisMonday
+  ).length
   // Calls booked = Marketing Growth Calls only (Jan 2026+)
   // Excludes old Calendly types from 2025 and pure opt-ins
   const mgcStart = '2026-01-01'
@@ -136,14 +149,15 @@ export default function Dashboard() {
   const liveUpcomingSecond = activeLeadsData.filter((l: Lead) => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= now)
 
   // ── Live chart data (recalculated when liveLeads or timeframe changes) ────
+  // Chart weeks: calendar weeks (Mon–Sun), W1 = oldest, W12 = current week
   const weeklyChartData = Array.from({ length: tfWeeks }, (_, i) => {
-    const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - i * 7)
-    const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
+    // i=0 = current week (thisMonday → now), i=1 = last week, etc.
+    const wStart = new Date(thisMonday); wStart.setDate(thisMonday.getDate() - i * 7)
+    const wEnd = new Date(wStart); wEnd.setDate(wStart.getDate() + 7)
     const wStartISO = wStart.toISOString(); const wEndISO = wEnd.toISOString()
-    // Booked: use last_contact_at or booked_at or opted_in_at
+    // Booked: use booked_at only (single source of truth — set when booking confirmed)
     const booked = activeLeadsData.filter((l: Lead) => {
-      const d = l.booked_at || l.last_contact_at || l.opted_in_at
-      return d && d >= wStartISO && d < wEndISO && l.booking_completed
+      return l.booked_at && l.booked_at >= wStartISO && l.booked_at < wEndISO && l.booking_completed
     }).length
     // Attended: use last_contact_at for attended stages
     const qual = activeLeadsData.filter((l: Lead) => {
@@ -198,8 +212,14 @@ export default function Dashboard() {
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <MetricCard label="Calls booked this week" value={String(liveThisWeekBooked)}
-          sub={`${thisWeekBooked >= lastWeekBooked ? '+' : ''}${thisWeekBooked - lastWeekBooked} vs last week`}
-          trend={thisWeekBooked >= lastWeekBooked ? 'up' : 'down'} color={teal} />
+          sub={(() => {
+            const liveLastWeekBooked = activeLeadsData.filter((l: Lead) =>
+              l.booked_at && new Date(l.booked_at) >= lastMonday && new Date(l.booked_at) < thisMonday
+            ).length
+            const diff = liveThisWeekBooked - liveLastWeekBooked
+            return `${diff >= 0 ? '+' : ''}${diff} vs last week`
+          })()}
+          trend={liveThisWeekBooked >= activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= lastMonday && new Date(l.booked_at) < thisMonday).length ? 'up' : 'down'} color={teal} />
         <MetricCard label="Show rate (30d)" value={`${liveShowRate}%`}
           sub={`${liveAllBooked} calls booked total`}
           trend={showRate >= 70 ? 'up' : 'down'} />
