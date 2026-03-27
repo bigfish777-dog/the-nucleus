@@ -1,0 +1,48 @@
+name: Deploy to Vercel
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Vercel deployment
+        run: |
+          DEPLOY=$(curl -s -X POST \
+            "https://api.vercel.com/v13/deployments?projectId=prj_otKBkfiW6bJR6r6cqm0aTxMfUDfi" \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "name": "the-nucleus",
+              "gitSource": {
+                "type": "github",
+                "repoId": "1188935413",
+                "ref": "main"
+              }
+            }')
+          DEPLOY_ID=$(echo $DEPLOY | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+          echo "Deploy ID: $DEPLOY_ID"
+
+          for i in $(seq 1 20); do
+            sleep 15
+            STATE=$(curl -s "https://api.vercel.com/v13/deployments/$DEPLOY_ID" \
+              -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin).get('readyState',''))")
+            echo "State: $STATE"
+            if [ "$STATE" = "READY" ]; then
+              curl -s -X POST "https://api.vercel.com/v2/deployments/$DEPLOY_ID/aliases" \
+                -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+                -H "Content-Type: application/json" \
+                -d '{"alias": "dash.testtubemarketing.com"}'
+              echo "✅ Deployed and aliased to dash.testtubemarketing.com"
+              exit 0
+            fi
+            if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
+              echo "❌ Deployment failed with state: $STATE"
+              exit 1
+            fi
+          done
+          echo "❌ Deployment timed out"
+          exit 1
