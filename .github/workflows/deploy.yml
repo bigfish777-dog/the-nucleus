@@ -4,45 +4,64 @@ on:
   push:
     branches: [main]
 
+env:
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  PROJECT_ID: prj_otKBkfiW6bJR6r6cqm0aTxMfUDfi
+  REPO_ID: "1188935413"
+  DOMAIN: dash.testtubemarketing.com
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Check secret is available
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "❌ VERCEL_TOKEN secret is not set or is empty"
+            echo "Go to: https://github.com/bigfish777-dog/the-nucleus/settings/secrets/actions"
+            echo "Add secret named VERCEL_TOKEN"
+            exit 1
+          fi
+          echo "✅ VERCEL_TOKEN is set (length: ${#VERCEL_TOKEN})"
+
       - name: Trigger Vercel deployment
         run: |
-          DEPLOY=$(curl -s -X POST \
-            "https://api.vercel.com/v13/deployments?projectId=prj_otKBkfiW6bJR6r6cqm0aTxMfUDfi" \
-            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+          echo "Triggering deployment..."
+          RESPONSE=$(curl -s -X POST \
+            "https://api.vercel.com/v13/deployments?projectId=$PROJECT_ID" \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
             -H "Content-Type: application/json" \
-            -d '{
-              "name": "the-nucleus",
-              "gitSource": {
-                "type": "github",
-                "repoId": "1188935413",
-                "ref": "main"
-              }
-            }')
-          DEPLOY_ID=$(echo $DEPLOY | python3 -c "import sys,json; print(json.load(sys.stdin).get('id',''))")
+            -d "{\"name\":\"the-nucleus\",\"gitSource\":{\"type\":\"github\",\"repoId\":\"$REPO_ID\",\"ref\":\"main\"}}")
+          
+          echo "API Response: $RESPONSE"
+          DEPLOY_ID=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('id', d.get('uid', '')))" 2>/dev/null)
+          
+          if [ -z "$DEPLOY_ID" ]; then
+            echo "❌ Failed to get deployment ID"
+            exit 1
+          fi
           echo "Deploy ID: $DEPLOY_ID"
 
-          for i in $(seq 1 20); do
+          for i in $(seq 1 24); do
             sleep 15
             STATE=$(curl -s "https://api.vercel.com/v13/deployments/$DEPLOY_ID" \
-              -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
-              | python3 -c "import sys,json; print(json.load(sys.stdin).get('readyState',''))")
-            echo "State: $STATE"
+              -H "Authorization: Bearer $VERCEL_TOKEN" \
+              | python3 -c "import sys,json; print(json.load(sys.stdin).get('readyState','UNKNOWN'))" 2>/dev/null)
+            echo "[$i/24] State: $STATE"
+            
             if [ "$STATE" = "READY" ]; then
               curl -s -X POST "https://api.vercel.com/v2/deployments/$DEPLOY_ID/aliases" \
-                -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+                -H "Authorization: Bearer $VERCEL_TOKEN" \
                 -H "Content-Type: application/json" \
-                -d '{"alias": "dash.testtubemarketing.com"}'
-              echo "✅ Deployed and aliased to dash.testtubemarketing.com"
+                -d "{\"alias\":\"$DOMAIN\"}"
+              echo "✅ Live at $DOMAIN"
               exit 0
             fi
+            
             if [ "$STATE" = "ERROR" ] || [ "$STATE" = "CANCELED" ]; then
-              echo "❌ Deployment failed with state: $STATE"
+              echo "❌ Deployment failed: $STATE"
               exit 1
             fi
           done
-          echo "❌ Deployment timed out"
+          echo "❌ Timed out after 6 minutes"
           exit 1
