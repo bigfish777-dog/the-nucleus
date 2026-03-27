@@ -125,16 +125,36 @@ function generateAvailableSlots(
     const dayOfWeek = current.getDay();
 
     if (config.days.includes(dayOfWeek)) {
-      for (let hour = config.startHour; hour < config.endHour; hour++) {
-        for (let min = 0; min < 60; min += config.slotDurationMinutes) {
-          const slotStart = new Date(current);
-          slotStart.setHours(hour, min, 0, 0);
+      // Get London date string for this day (handles BST/GMT correctly)
+      const dateStr = current.toLocaleDateString("en-CA", { timeZone: config.timezone }); // YYYY-MM-DD
 
+      // Calculate UTC offset for London on this date by parsing noon UTC
+      const noonUtc = new Date(`${dateStr}T12:00:00Z`);
+      const londonNoonHour = parseInt(
+        noonUtc.toLocaleString("en-GB", { timeZone: config.timezone, hour: "2-digit", hour12: false })
+      );
+      const utcOffsetHours = londonNoonHour - 12; // e.g. BST = +1, GMT = 0
+
+      // Helper: London clock time → UTC Date
+      const londonToUtc = (h: number, m: number): Date => {
+        const d = new Date(`${dateStr}T${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:00Z`);
+        d.setTime(d.getTime() - utcOffsetHours * 60 * 60 * 1000);
+        return d;
+      };
+
+      // End of working day in UTC
+      const endOfDay = londonToUtc(config.endHour, 0);
+
+      // Generate slots at 40-minute intervals in London time
+      const totalMinutes = (config.endHour - config.startHour) * 60;
+      for (let offsetMin = 0; offsetMin < totalMinutes; offsetMin += config.slotDurationMinutes) {
+        const londonH = config.startHour + Math.floor(offsetMin / 60);
+        const londonM = offsetMin % 60;
+
+        const slotStart = londonToUtc(londonH, londonM);
           const slotEnd = new Date(slotStart.getTime() + config.slotDurationMinutes * 60 * 1000);
 
-          const endCheck = new Date(current);
-          endCheck.setHours(config.endHour, 0, 0, 0);
-          if (slotEnd > endCheck) continue;
+          if (slotEnd > endOfDay) continue;
 
           if (slotStart < minNotice) continue;
 
@@ -161,7 +181,6 @@ function generateAvailableSlots(
               }),
             });
           }
-        }
       }
     }
 
