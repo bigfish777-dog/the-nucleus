@@ -45,6 +45,22 @@ def sb_get(path):
     req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}", headers=SB_HEADERS)
     return json.load(urllib.request.urlopen(req, timeout=15))
 
+def get_template(key, fallback_subject="", fallback_body=""):
+    """Fetch email template from settings table, with fallback."""
+    try:
+        rows = sb_get(f"settings?key=eq.{key}&select=value")
+        return rows[0]['value'] if rows else (fallback_subject if 'subject' in key else fallback_body)
+    except:
+        return fallback_subject if 'subject' in key else fallback_body
+
+def render_template(template, first_name, call_time):
+    """Replace {{placeholders}} in template."""
+    import re
+    result = template.replace('{{first_name}}', first_name).replace('{{call_time}}', call_time)
+    # Strip emojis from plain text (keep for HTML)
+    result_plain = re.sub(r'[^\x00-\x7F]+', '', result).strip()
+    return result_plain
+
 def sb_patch(path, data):
     payload = json.dumps(data).encode()
     req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{path}",
@@ -79,17 +95,31 @@ def send_confirmation(lead_id):
     lead = leads[0]
     name_first = lead['name'].split()[0] if lead.get('name') else "there"
     call_time = fmt_dt(lead.get('call_datetime'))
-    
-    subject = f"Your Marketing Growth Call is confirmed — {call_time}"
-    text = f"""Hi {name_first},
+
+    # Use DB template if available, otherwise fallback
+    subj_tpl = get_template('email_confirmation_subject')
+    body_tpl = get_template('email_confirmation_body')
+
+    if subj_tpl:
+        subject = render_template(subj_tpl, name_first, call_time)
+    else:
+        subject = f"Your Marketing Growth Call is confirmed — {call_time}"
+
+    if body_tpl:
+        text = render_template(body_tpl, name_first, call_time)
+        # Ensure Zoom link is present if template uses placeholder
+        if ZOOM_LINK not in text:
+            text = text.replace('{{zoom_link}}', ZOOM_LINK)
+    else:
+        text = f"""Hi {name_first},
 
 Your Marketing Growth Call with Nick Fisher is confirmed.
 
-📅 {call_time}
-🔗 {ZOOM_LINK}
+{call_time}
+{ZOOM_LINK}
 
 What to expect:
-- 45 minutes — no pitch, no pressure
+- 45 minutes - no pitch, no pressure
 - We'll talk about your business, your marketing, and what's not working
 - You'll get an honest view of where the gaps are
 - You can't buy anything on this call
@@ -138,53 +168,29 @@ def send_reminders():
         diff_hours = (call_dt - now).total_seconds() / 3600
         name_first = lead['name'].split()[0] if lead.get('name') else "there"
         
+        call_time_str = fmt_dt(lead['call_datetime'])
+
         # 24hr reminder
         if 23 <= diff_hours <= 25:
-            subject = f"Reminder: Your call with Nick is tomorrow — {fmt_dt(lead['call_datetime'])}"
-            text = f"""Hi {name_first},
-
-Just a reminder that your Marketing Growth Call with Nick is tomorrow.
-
-📅 {fmt_dt(lead['call_datetime'])}
-🔗 {ZOOM_LINK}
-
-See you then!
-
-Nick Fisher | Test Tube Marketing
-"""
+            subj_tpl = get_template('email_reminder_24h_subject')
+            body_tpl = get_template('email_reminder_24h_body')
+            subject = render_template(subj_tpl, name_first, call_time_str) if subj_tpl else f"Reminder: Your call with Nick is tomorrow — {call_time_str}"
+            text = render_template(body_tpl, name_first, call_time_str) if body_tpl else f"Hi {name_first},\n\nJust a reminder that your Marketing Growth Call with Nick is tomorrow.\n\n{call_time_str}\n{ZOOM_LINK}\n\nSee you then!\n\nNick Fisher | Test Tube Marketing"
+            if ZOOM_LINK not in text: text += f"\n\n{ZOOM_LINK}"
             send_email(lead['email'], subject, text)
             sent += 1
-        
+
         # 3hr reminder
         elif 2.75 <= diff_hours <= 3.25:
             subject = f"Your call with Nick starts in 3 hours"
-            text = f"""Hi {name_first},
-
-Your Marketing Growth Call with Nick starts in 3 hours.
-
-📅 {fmt_dt(lead['call_datetime'])}
-🔗 {ZOOM_LINK}
-
-See you shortly!
-
-Nick Fisher | Test Tube Marketing
-"""
+            text = f"Hi {name_first},\n\nYour Marketing Growth Call with Nick starts in 3 hours.\n\n{call_time_str}\n{ZOOM_LINK}\n\nSee you shortly!\n\nNick Fisher | Test Tube Marketing"
             send_email(lead['email'], subject, text)
             sent += 1
 
         # 15min reminder
         elif 0.2 <= diff_hours <= 0.35:
             subject = f"Your call with Nick starts in 15 minutes"
-            text = f"""Hi {name_first},
-
-Your Marketing Growth Call starts in 15 minutes — here's the link:
-
-🔗 {ZOOM_LINK}
-
-See you in a moment!
-
-Nick Fisher | Test Tube Marketing
-"""
+            text = f"Hi {name_first},\n\nYour Marketing Growth Call starts in 15 minutes - here's the link:\n\n{ZOOM_LINK}\n\nSee you in a moment!\n\nNick Fisher | Test Tube Marketing"
             send_email(lead['email'], subject, text)
             sent += 1
     
