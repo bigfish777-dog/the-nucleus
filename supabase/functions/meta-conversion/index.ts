@@ -28,7 +28,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { eventName, email, phone, utm_source, utm_campaign, utm_content } = await req.json();
+    const { eventName, email, phone, utm_source, utm_campaign, utm_content, custom_params } = await req.json();
 
     if (!META_TOKEN) {
       console.error("META_TOKEN not set");
@@ -61,6 +61,8 @@ serve(async (req: Request) => {
             ...(utm_source && { utm_source }),
             ...(utm_campaign && { utm_campaign }),
             ...(utm_content && { utm_content }),
+            // Pass through Meta's URL params (adset, hook) as custom data
+            ...(custom_params || {}),
           },
         },
       ],
