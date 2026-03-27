@@ -37,7 +37,7 @@ def send_whatsapp(to_number, message):
     except Exception as e:
         print(f"  WhatsApp failed: {e}")
         return False
-ZOOM_LINK = "https://us06web.zoom.us/j/your-personal-room"  # update with Nick's personal Zoom
+ZOOM_LINK = "https://us06web.zoom.us/j/8792020476"
 
 SB_HEADERS = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
 
