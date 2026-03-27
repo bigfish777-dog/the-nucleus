@@ -315,6 +315,18 @@ export default function Pipeline() {
 
   const updateStage = async (id: string, stage: PipelineStage) => {
     const current = leads.find(l => l.id === id)
+
+    // Test entries: delete from DB and remove from local state immediately
+    if (stage === 'test') {
+      setLeads(p => p.filter(l => l.id !== id))
+      if (selected?.id === id) setSelected(null)
+      try {
+        const { supabase } = await import('../lib/supabase')
+        await supabase.from('leads').update({ stage: 'test', updated_at: new Date().toISOString() }).eq('id', id)
+      } catch { /* offline */ }
+      return
+    }
+
     setLeads(p => p.map(l => l.id === id ? { ...l, stage } : l))
     if (selected?.id === id) setSelected(p => p ? { ...p, stage } : null)
     try {
