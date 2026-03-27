@@ -286,17 +286,41 @@ serve(async (req: Request) => {
       }
 
       // Update lead record with event ID and confirmed stage
+      // Try by leadId first, fall back to email lookup
+      const updatePayload = {
+        google_event_id: calData.id,
+        call_datetime: slotStart,
+        stage: "booked",
+        booking_completed: true,
+        updated_at: new Date().toISOString(),
+      };
+
       if (leadId) {
-        await supabase
+        await supabase.from("leads").update(updatePayload).eq("id", leadId);
+      } else if (leadEmail) {
+        // Fallback: find most recent non-booked lead with this email
+        const { data: existingLeads } = await supabase
           .from("leads")
-          .update({
-            google_event_id: calData.id,
-            call_datetime: slotStart,
-            stage: "booked",
-            booking_completed: true,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", leadId);
+          .select("id")
+          .eq("email", leadEmail)
+          .eq("booking_completed", false)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (existingLeads && existingLeads.length > 0) {
+          await supabase.from("leads").update(updatePayload).eq("id", existingLeads[0].id);
+        } else {
+          // No existing lead — create one
+          await supabase.from("leads").insert({
+            name: leadName,
+            email: leadEmail,
+            phone: leadPhone || null,
+            ...updatePayload,
+            opted_in_at: new Date().toISOString(),
+            last_contact_at: new Date().toISOString(),
+            proposal_sent: false,
+          });
+        }
       }
 
       return new Response(
