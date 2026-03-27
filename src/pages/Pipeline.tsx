@@ -12,8 +12,7 @@ const green = '#22C55E'
 const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string }[] = [
   { stages: ['booked'], label: 'Call Booked', color: teal },
   { stages: ['qualified'], label: 'Proposal in Prep', color: '#7C5CBF' },
-  { stages: ['proposal_sent'], label: 'Proposal Sent', color: amber },
-  { stages: ['proposal_live'], label: 'Proposal Live', color: pink },
+  { stages: ['proposal_sent', 'proposal_live'], label: 'Proposal Sent', color: amber },
 ]
 
 // Note: 'qualified' and 'second_call_booked' from old data sit in archive.
@@ -37,7 +36,6 @@ const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = 
   { stage: 'booked', label: 'Call Booked', group: 'Active' },
   { stage: 'qualified', label: 'Proposal in Prep', group: 'Active' },
   { stage: 'proposal_sent', label: 'Proposal Sent', group: 'Active' },
-  { stage: 'proposal_live', label: 'Proposal Live (deciding)', group: 'Active' },
   { stage: 'no_show', label: 'No-Show (1st call)', group: 'Archive' },
   { stage: 'second_call_no_show', label: 'No-Show (2nd call)', group: 'Archive' },
   { stage: 'cancelled', label: 'Cancelled / Rescheduled', group: 'Archive' },
