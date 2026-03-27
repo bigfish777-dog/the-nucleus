@@ -17,11 +17,12 @@ const AVAILABILITY_CONFIG = {
   timezone: "Europe/London",
   days: [1, 2, 3, 4, 5], // Mon-Fri
   startHour: 9,
-  endHour: 17,
-  slotDurationMinutes: 30,
-  bufferMinutes: 15,
+  endHour: 17,           // No call can START after 16:20 (ends by 17:00)
+  latestStartMinute: 40, // 16:40 would end at 17:20 — too late. Latest start = 16:20
+  slotDurationMinutes: 40,
+  bufferMinutes: 10,     // 10-min buffer between calls
   minNoticeHours: 24,
-  maxWorkingDaysAhead: 4, // up to 4 working days from today
+  maxWorkingDaysAhead: 4,
 };
 
 async function getValidAccessToken(supabase: any): Promise<string> {

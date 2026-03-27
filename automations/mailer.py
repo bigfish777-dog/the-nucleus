@@ -148,7 +148,8 @@ www.testtubemarketing.com
 # ─── PROCESS PENDING CONFIRMATIONS ───────────────────────────────────────────
 def process_pending_confirmations():
     """Pick up any leads flagged confirm_pending=true and send their confirmation email."""
-    pending = sb_get("leads?confirm_pending=eq.true&booking_completed=eq.true&select=id,name,email")
+    # Only process leads that actually have a call_datetime (no TBC emails)
+    pending = sb_get("leads?confirm_pending=eq.true&booking_completed=eq.true&call_datetime=not.is.null&select=id,name,email")
     if not pending:
         print("No pending confirmations")
         return

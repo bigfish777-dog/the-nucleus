@@ -32,13 +32,29 @@ serve(async (req: Request) => {
     // Flag the lead for confirmation — VPS mailer.py picks this up and sends
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    // Only flag leads that have a confirmed call_datetime (not null)
+    // Using RPC or subquery approach — Supabase JS doesn't support .limit on .update directly,
+    // so we find the lead first, then update by id
+    const { data: matchingLeads, error: findError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("email", leadEmail)
+      .eq("booking_completed", true)
+      .not("call_datetime", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (findError || !matchingLeads || matchingLeads.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No booked lead with call_datetime found for this email" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { error } = await supabase
       .from("leads")
       .update({ confirm_pending: true })
-      .eq("email", leadEmail)
-      .eq("booking_completed", true)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .eq("id", matchingLeads[0].id);
 
     if (error) {
       console.error("DB flag error:", error);
