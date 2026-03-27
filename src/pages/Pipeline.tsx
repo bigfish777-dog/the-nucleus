@@ -11,6 +11,7 @@ const green = '#22C55E'
 // ── Pipeline columns (active work only) ──────────────────────────────────────
 const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string }[] = [
   { stages: ['booked'], label: 'Call Booked', color: teal },
+  { stages: ['qualified'], label: 'Proposal in Prep', color: '#7C5CBF' },
   { stages: ['proposal_sent'], label: 'Proposal Sent', color: amber },
   { stages: ['proposal_live'], label: 'Proposal Live', color: pink },
 ]
@@ -20,7 +21,6 @@ const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string 
 
 // ── Archived stages (tracked but not in main pipeline) ───────────────────────
 const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
-  { stage: 'qualified', label: 'Attended (triage)' },
   { stage: 'no_show', label: 'No-Show' },
   { stage: 'second_call_no_show', label: '2nd Call No-Show' },
   { stage: 'cancelled', label: 'Cancelled' },
@@ -35,7 +35,8 @@ const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
 // ── Stage selector options ────────────────────────────────────────────────────
 const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = [
   { stage: 'booked', label: 'Call Booked', group: 'Active' },
-  { stage: 'qualified', label: 'Proposal Sent (awaiting 2nd call)', group: 'Active' },
+  { stage: 'qualified', label: 'Proposal in Prep', group: 'Active' },
+  { stage: 'proposal_sent', label: 'Proposal Sent', group: 'Active' },
   { stage: 'proposal_live', label: 'Proposal Live (deciding)', group: 'Active' },
   { stage: 'no_show', label: 'No-Show (1st call)', group: 'Archive' },
   { stage: 'second_call_no_show', label: 'No-Show (2nd call)', group: 'Archive' },
