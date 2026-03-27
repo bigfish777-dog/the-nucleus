@@ -141,15 +141,33 @@ Nick Fisher | Test Tube Marketing
             send_email(lead['email'], subject, text)
             sent += 1
         
-        # 2hr reminder
-        elif 1.75 <= diff_hours <= 2.25:
-            subject = f"Your call with Nick starts in 2 hours"
+        # 3hr reminder
+        elif 2.75 <= diff_hours <= 3.25:
+            subject = f"Your call with Nick starts in 3 hours"
             text = f"""Hi {name_first},
 
-Your Marketing Growth Call starts in 2 hours.
+Your Marketing Growth Call with Nick starts in 3 hours.
 
 📅 {fmt_dt(lead['call_datetime'])}
 🔗 {ZOOM_LINK}
+
+See you shortly!
+
+Nick Fisher | Test Tube Marketing
+"""
+            send_email(lead['email'], subject, text)
+            sent += 1
+
+        # 15min reminder
+        elif 0.2 <= diff_hours <= 0.35:
+            subject = f"Your call with Nick starts in 15 minutes"
+            text = f"""Hi {name_first},
+
+Your Marketing Growth Call starts in 15 minutes — here's the link:
+
+🔗 {ZOOM_LINK}
+
+See you in a moment!
 
 Nick Fisher | Test Tube Marketing
 """

@@ -21,7 +21,7 @@ const AVAILABILITY_CONFIG = {
   slotDurationMinutes: 30,
   bufferMinutes: 15,
   minNoticeHours: 24,
-  maxDaysAhead: 14,
+  maxWorkingDaysAhead: 4, // up to 4 working days from today
 };
 
 async function getValidAccessToken(supabase: any): Promise<string> {
@@ -185,11 +185,19 @@ serve(async (req: Request) => {
 
     // GET /availability
     if (req.method === "GET" && path.endsWith("/availability")) {
-      const weeksAhead = parseInt(url.searchParams.get("weeks") || "2");
-
       const now = new Date();
       const startDate = new Date(now);
-      const endDate = new Date(now.getTime() + weeksAhead * 7 * 24 * 60 * 60 * 1000);
+
+      // Calculate end date as N working days ahead (Mon-Fri only)
+      const maxWorkingDays = AVAILABILITY_CONFIG.maxWorkingDaysAhead;
+      let workingDaysCount = 0;
+      const endDate = new Date(now);
+      endDate.setHours(23, 59, 59, 999);
+      while (workingDaysCount < maxWorkingDays) {
+        endDate.setDate(endDate.getDate() + 1);
+        const day = endDate.getDay();
+        if (day !== 0 && day !== 6) workingDaysCount++; // skip weekends
+      }
 
       const busyTimes = await getBusyTimes(
         accessToken,
@@ -205,6 +213,7 @@ serve(async (req: Request) => {
           config: {
             slotDuration: AVAILABILITY_CONFIG.slotDurationMinutes,
             workingHours: `${AVAILABILITY_CONFIG.startHour}:00 - ${AVAILABILITY_CONFIG.endHour}:00 London`,
+            maxWorkingDaysAhead: AVAILABILITY_CONFIG.maxWorkingDaysAhead,
           },
         }),
         {
