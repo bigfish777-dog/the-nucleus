@@ -227,17 +227,25 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
           </div>
 
           {/* Intake answers */}
-          {(lead.website || lead.industry || lead.revenue_range || lead.client_value) && (
+          {(lead.website || lead.industry || lead.revenue_range || lead.client_value || lead.challenge || lead.readiness) && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Intake Answers</p>
               <div className="space-y-1.5">
-                {[['Website', lead.website],['Business type',lead.industry],['Annual revenue',lead.revenue_range],['Avg client value',lead.client_value]]
-                  .filter(([,v])=>v).map(([l,v])=>(
-                    <div key={l as string} className="flex justify-between text-sm gap-4">
-                      <span style={{color:muted, flexShrink: 0}}>{l}</span>
-                      <span className="text-right" style={{color:'#F0F2F8', wordBreak: 'break-all'}}>{v}</span>
+                {([
+                  ['Website', lead.website],
+                  ['Business type', lead.industry],
+                  ['Annual revenue', lead.revenue_range],
+                  ['Avg client value', lead.client_value],
+                  ['Biggest challenge', lead.challenge],
+                  ['Investment readiness', lead.readiness],
+                ] as [string, string | undefined][])
+                  .filter(([, v]) => v)
+                  .map(([l, v]) => (
+                    <div key={l} className="flex justify-between text-sm gap-4">
+                      <span style={{ color: muted, flexShrink: 0, minWidth: 80 }}>{l}</span>
+                      <span className="text-right" style={{ color: '#F0F2F8', wordBreak: 'break-word' }}>{v}</span>
                     </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}

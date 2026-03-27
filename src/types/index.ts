@@ -27,6 +27,8 @@ export interface Lead {
   industry?: string
   revenue_range?: string
   client_value?: string
+  challenge?: string
+  readiness?: string
   stage: PipelineStage
   opted_in_at: string
   booking_completed: boolean
