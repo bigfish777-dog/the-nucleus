@@ -110,7 +110,21 @@ www.testtubemarketing.com
         if not phone.startswith('44'): phone = '44' + phone.lstrip('0')
         wa_msg = f"Hi {name_first}, your Marketing Growth Call with Nick is confirmed for {call_time}. Join here: {ZOOM_LINK}"
         send_whatsapp(phone, wa_msg)
-    sb_patch(f"leads?id=eq.{lead_id}", {"last_contact_at": datetime.now(timezone.utc).isoformat()})
+    sb_patch(f"leads?id=eq.{lead_id}", {
+        "last_contact_at": datetime.now(timezone.utc).isoformat(),
+        "confirm_pending": False,
+    })
+
+# ─── PROCESS PENDING CONFIRMATIONS ───────────────────────────────────────────
+def process_pending_confirmations():
+    """Pick up any leads flagged confirm_pending=true and send their confirmation email."""
+    pending = sb_get("leads?confirm_pending=eq.true&booking_completed=eq.true&select=id,name,email")
+    if not pending:
+        print("No pending confirmations")
+        return
+    for lead in pending:
+        print(f"  Sending confirmation to {lead['email']}...")
+        send_confirmation(lead['id'])
 
 # ─── REMINDER EMAILS ─────────────────────────────────────────────────────────
 def send_reminders():
@@ -244,6 +258,8 @@ if __name__ == "__main__":
     
     if cmd == "confirm" and len(sys.argv) > 2:
         send_confirmation(sys.argv[2])
+    elif cmd == "pending_confirmations":
+        process_pending_confirmations()
     elif cmd == "reminders":
         send_reminders()
     elif cmd == "weekly_report":
