@@ -23,6 +23,7 @@ export interface Lead {
   utm_medium?: string
   utm_campaign?: string
   utm_content?: string
+  website?: string
   industry?: string
   revenue_range?: string
   client_value?: string

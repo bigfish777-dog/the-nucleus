@@ -226,15 +226,15 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
           </div>
 
           {/* Intake answers */}
-          {(lead.industry || lead.revenue_range || lead.client_value) && (
+          {(lead.website || lead.industry || lead.revenue_range || lead.client_value) && (
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Intake Answers</p>
               <div className="space-y-1.5">
-                {[['Business type',lead.industry],['Annual revenue',lead.revenue_range],['Avg client value',lead.client_value]]
+                {[['Website', lead.website],['Business type',lead.industry],['Annual revenue',lead.revenue_range],['Avg client value',lead.client_value]]
                   .filter(([,v])=>v).map(([l,v])=>(
-                    <div key={l as string} className="flex justify-between text-sm">
-                      <span style={{color:muted}}>{l}</span>
-                      <span className="text-right max-w-xs" style={{color:'#F0F2F8'}}>{v}</span>
+                    <div key={l as string} className="flex justify-between text-sm gap-4">
+                      <span style={{color:muted, flexShrink: 0}}>{l}</span>
+                      <span className="text-right" style={{color:'#F0F2F8', wordBreak: 'break-all'}}>{v}</span>
                     </div>
                 ))}
               </div>
