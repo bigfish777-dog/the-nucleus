@@ -16,7 +16,7 @@ const corsHeaders = {
 const AVAILABILITY_CONFIG = {
   timezone: "Europe/London",
   days: [1, 2, 3, 4, 5], // Mon-Fri
-  startHour: 9,
+  startHour: 10,         // First slot at 10am London
   endHour: 17,           // No call can START after 16:20 (ends by 17:00)
   latestStartMinute: 40, // 16:40 would end at 17:20 — too late. Latest start = 16:20
   slotDurationMinutes: 40,
