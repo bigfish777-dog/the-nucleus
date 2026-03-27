@@ -261,10 +261,12 @@ serve(async (req: Request) => {
           useDefault: false,
           overrides: [{ method: "popup", minutes: 15 }],
         },
+        conferenceData: undefined, // Zoom link sent via confirmation email instead
       };
 
+      // sendUpdates=all sends a Google Calendar invite to the attendee
       const calResponse = await fetch(
-        "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=none",
+        "https://www.googleapis.com/calendar/v3/calendars/primary/events?sendUpdates=all",
         {
           method: "POST",
           headers: {
@@ -323,6 +325,23 @@ serve(async (req: Request) => {
         }
       }
 
+      // Trigger confirmation email via mailer.py (fire-and-forget via Supabase DB flag)
+      // We set a flag on the lead that the heartbeat/cron picks up, or call directly
+      // For now: store confirmed_at so mailer.py reminders logic can send confirmation
+      const confirmedLeadId = leadId || (await (async () => {
+        const { data } = await supabase
+          .from("leads").select("id").eq("email", leadEmail)
+          .eq("booking_completed", true).order("updated_at", { ascending: false }).limit(1);
+        return data?.[0]?.id;
+      })());
+
+      if (confirmedLeadId) {
+        // Mark booked_at so mailer.py send_confirmation can be triggered
+        await supabase.from("leads").update({
+          booked_at: new Date().toISOString(),
+        }).eq("id", confirmedLeadId).is("booked_at", null);
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
@@ -330,6 +349,7 @@ serve(async (req: Request) => {
           eventLink: calData.htmlLink,
           start: slotStart,
           end: slotEnd,
+          leadId: confirmedLeadId,
         }),
         {
           status: 201,
