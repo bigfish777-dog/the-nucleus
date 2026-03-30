@@ -27,11 +27,14 @@ const TEMPLATES = [
   { key: 'email_confirmation_body', label: 'Confirmation Email — Body', type: 'email', multiline: true },
   { key: 'email_reminder_24h_subject', label: '24hr Reminder Email — Subject', type: 'email' },
   { key: 'email_reminder_24h_body', label: '24hr Reminder Email — Body', type: 'email', multiline: true },
-  { key: 'email_reminder_2h_subject', label: '2hr Reminder Email — Subject', type: 'email' },
-  { key: 'email_reminder_2h_body', label: '2hr Reminder Email — Body', type: 'email', multiline: true },
+  { key: 'email_reminder_3h_subject', label: '3hr Reminder Email — Subject', type: 'email' },
+  { key: 'email_reminder_3h_body', label: '3hr Reminder Email — Body', type: 'email', multiline: true },
+  { key: 'email_reminder_15min_subject', label: '15min Reminder Email — Subject', type: 'email' },
+  { key: 'email_reminder_15min_body', label: '15min Reminder Email — Body', type: 'email', multiline: true },
   { key: 'whatsapp_confirmation', label: 'WhatsApp Confirmation Message', type: 'whatsapp', multiline: true },
   { key: 'whatsapp_reminder_24h', label: 'WhatsApp 24hr Reminder', type: 'whatsapp', multiline: true },
-  { key: 'whatsapp_reminder_2h', label: 'WhatsApp 2hr Reminder', type: 'whatsapp', multiline: true },
+  { key: 'whatsapp_reminder_3h', label: 'WhatsApp 3hr Reminder', type: 'whatsapp', multiline: true },
+  { key: 'whatsapp_reminder_15min', label: 'WhatsApp 15min Reminder', type: 'whatsapp', multiline: true },
 ]
 
 function TemplateEditor() {
@@ -248,7 +251,8 @@ export default function Settings() {
           {[
             { label: 'Weekly report', value: 'Every Monday 7am → bigfish@ + ad@testtubemarketing.com' },
             { label: '24hr reminder', value: 'Sent to leads the day before their call' },
-            { label: '2hr reminder', value: 'Sent to leads 2 hours before their call' },
+            { label: '3hr reminder', value: 'Sent to leads 3 hours before their call' },
+            { label: '15min reminder', value: 'Sent to leads 15 minutes before their call' },
             { label: 'Confirmation', value: 'Sent when a call is booked via the portal' },
           ].map(({ label, value }) => (
             <div key={label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid ${border}` }}>
