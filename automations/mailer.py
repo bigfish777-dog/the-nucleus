@@ -103,11 +103,9 @@ def send_email(to, subject, body_text, body_html=None):
     msg['From'] = f"Nick Fisher | Test Tube Marketing <{GMAIL_USER}>"
     msg['To'] = to
     msg['Subject'] = subject
-    msg.attach(MIMEText(body_text, 'plain'))
     if body_html is None:
         body_html = plain_text_to_html(body_text)
-    if body_html:
-        msg.attach(MIMEText(body_html, 'html'))
+    msg.attach(MIMEText(body_html, 'html'))
     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
     server.login(GMAIL_USER, GMAIL_APP_PASSWORD)
     server.sendmail(GMAIL_USER, to, msg.as_string())
