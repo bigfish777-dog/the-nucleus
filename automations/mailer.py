@@ -4,7 +4,7 @@ Handles: confirmation emails, call reminders, weekly reports
 Run via: python3 automations/email.py <command>
 Commands: confirm <lead_id>, reminders, weekly_report
 """
-import smtplib, json, urllib.request, sys, os, re, html
+import smtplib, json, urllib.request, urllib.parse, sys, os, re, html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
@@ -195,7 +195,7 @@ def queue_whatsapp_confirmation(lead):
 
 
 def process_whatsapp_queue():
-    now_iso = datetime.now(timezone.utc).isoformat()
+    now_iso = urllib.parse.quote(datetime.now(timezone.utc).isoformat(), safe='')
     try:
         queued = sb_get(f"whatsapp_queue?status=eq.pending&send_after=lte.{now_iso}&order=created_at.asc&select=*")
     except Exception as e:
