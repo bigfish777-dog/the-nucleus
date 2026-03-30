@@ -53,10 +53,15 @@ def get_template(key, fallback_subject="", fallback_body=""):
     except:
         return fallback_subject if 'subject' in key else fallback_body
 
-def render_template(template, first_name, call_time):
+def render_template(template, first_name, call_time, zoom_link=ZOOM_LINK):
     """Replace {{placeholders}} in template."""
     import re
-    result = template.replace('{{first_name}}', first_name).replace('{{call_time}}', call_time)
+    result = (
+        template
+        .replace('{{first_name}}', first_name)
+        .replace('{{call_time}}', call_time)
+        .replace('{{zoom_link}}', zoom_link)
+    )
     # Strip emojis from plain text (keep for HTML)
     result_plain = re.sub(r'[^\x00-\x7F]+', '', result).strip()
     return result_plain
@@ -177,21 +182,30 @@ def send_reminders():
             body_tpl = get_template('email_reminder_24h_body')
             subject = render_template(subj_tpl, name_first, call_time_str) if subj_tpl else f"Reminder: Your call with Nick is tomorrow — {call_time_str}"
             text = render_template(body_tpl, name_first, call_time_str) if body_tpl else f"Hi {name_first},\n\nJust a reminder that your Marketing Growth Call with Nick is tomorrow.\n\n{call_time_str}\n{ZOOM_LINK}\n\nSee you then!\n\nNick Fisher | Test Tube Marketing"
-            if ZOOM_LINK not in text: text += f"\n\n{ZOOM_LINK}"
+            if ZOOM_LINK not in text:
+                text += f"\n\n{ZOOM_LINK}"
             send_email(lead['email'], subject, text)
             sent += 1
 
         # 3hr reminder
         elif 2.75 <= diff_hours <= 3.25:
-            subject = f"Your call with Nick starts in 3 hours"
-            text = f"Hi {name_first},\n\nYour Marketing Growth Call with Nick starts in 3 hours.\n\n{call_time_str}\n{ZOOM_LINK}\n\nSee you shortly!\n\nNick Fisher | Test Tube Marketing"
+            subj_tpl = get_template('email_reminder_3h_subject')
+            body_tpl = get_template('email_reminder_3h_body')
+            subject = render_template(subj_tpl, name_first, call_time_str) if subj_tpl else "Your call with Nick starts in 3 hours"
+            text = render_template(body_tpl, name_first, call_time_str) if body_tpl else f"Hi {name_first},\n\nYour Marketing Growth Call with Nick starts in 3 hours.\n\n{call_time_str}\n{ZOOM_LINK}\n\nSee you shortly!\n\nNick Fisher | Test Tube Marketing"
+            if ZOOM_LINK not in text:
+                text += f"\n\n{ZOOM_LINK}"
             send_email(lead['email'], subject, text)
             sent += 1
 
         # 15min reminder
         elif 0.2 <= diff_hours <= 0.35:
-            subject = f"Your call with Nick starts in 15 minutes"
-            text = f"Hi {name_first},\n\nYour Marketing Growth Call starts in 15 minutes - here's the link:\n\n{ZOOM_LINK}\n\nSee you in a moment!\n\nNick Fisher | Test Tube Marketing"
+            subj_tpl = get_template('email_reminder_15min_subject')
+            body_tpl = get_template('email_reminder_15min_body')
+            subject = render_template(subj_tpl, name_first, call_time_str) if subj_tpl else "Your call with Nick starts in 15 minutes"
+            text = render_template(body_tpl, name_first, call_time_str) if body_tpl else f"Hi {name_first},\n\nYour Marketing Growth Call starts in 15 minutes - here's the link:\n\n{ZOOM_LINK}\n\nSee you in a moment!\n\nNick Fisher | Test Tube Marketing"
+            if ZOOM_LINK not in text:
+                text += f"\n\n{ZOOM_LINK}"
             send_email(lead['email'], subject, text)
             sent += 1
     
