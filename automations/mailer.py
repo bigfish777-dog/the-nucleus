@@ -4,7 +4,7 @@ Handles: confirmation emails, call reminders, weekly reports
 Run via: python3 automations/email.py <command>
 Commands: confirm <lead_id>, reminders, weekly_report
 """
-import smtplib, json, urllib.request, sys, os
+import smtplib, json, urllib.request, sys, os, re, html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
@@ -69,12 +69,43 @@ def sb_patch(path, data):
         data=payload, headers={**SB_HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"}, method='PATCH')
     return urllib.request.urlopen(req, timeout=15).status
 
+def plain_text_to_html(body_text):
+    """Convert plain-text-ish email copy into a simple HTML version with clickable links."""
+    body_html = html.escape(body_text)
+
+    # Markdown links: [Label](https://example.com)
+    body_html = re.sub(
+        r'\[([^\]]+)\]\((https?://[^)]+)\)',
+        lambda m: f'<a href="{m.group(2)}">{m.group(1)}</a>',
+        body_html
+    )
+
+    # Bare URLs
+    body_html = re.sub(
+        r'(?<!["=])(https?://[^\s<]+)',
+        lambda m: f'<a href="{m.group(1)}">{m.group(1)}</a>',
+        body_html
+    )
+
+    # Bullet lines
+    body_html = re.sub(r'(?m)^- (.+)$', r'• \1', body_html)
+
+    paragraphs = [p.strip() for p in body_html.split('\n\n') if p.strip()]
+    html_parts = []
+    for paragraph in paragraphs:
+        html_parts.append(f"<p>{paragraph.replace(chr(10), '<br>')}</p>")
+
+    return ''.join(html_parts)
+
+
 def send_email(to, subject, body_text, body_html=None):
     msg = MIMEMultipart('alternative')
     msg['From'] = f"Nick Fisher | Test Tube Marketing <{GMAIL_USER}>"
     msg['To'] = to
     msg['Subject'] = subject
     msg.attach(MIMEText(body_text, 'plain'))
+    if body_html is None:
+        body_html = plain_text_to_html(body_text)
     if body_html:
         msg.attach(MIMEText(body_html, 'html'))
     server = smtplib.SMTP_SSL('smtp.gmail.com', 465)
