@@ -55,16 +55,13 @@ def get_template(key, fallback_subject="", fallback_body=""):
 
 def render_template(template, first_name, call_time, zoom_link=ZOOM_LINK):
     """Replace {{placeholders}} in template."""
-    import re
-    result = (
+    return (
         template
         .replace('{{first_name}}', first_name)
         .replace('{{call_time}}', call_time)
         .replace('{{zoom_link}}', zoom_link)
+        .strip()
     )
-    # Strip emojis from plain text (keep for HTML)
-    result_plain = re.sub(r'[^\x00-\x7F]+', '', result).strip()
-    return result_plain
 
 def sb_patch(path, data):
     payload = json.dumps(data).encode()
