@@ -8,6 +8,7 @@ import smtplib, json, urllib.request, sys, os, re, html
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 GMAIL_USER = "bigfish@testtubemarketing.com"
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "ndcrbnkssmuetnok")
@@ -16,6 +17,9 @@ SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 WEEKLY_REPORT_RECIPIENTS = ["bigfish@testtubemarketing.com", "ad@testtubemarketing.com"]
 WA_TOKEN = "EAAU8j14lU7EBRM4htCZAXLKC5I7knJY4aM59okwNdZBucSXWJxpD8CL2BH1LzrEqE6epAQqRrH3t1EcsDsvZAYowUPm3dd3okIDXhveZBY374fInzUlfZCUJca0bA9ZBgkQReEj8AZCcYfSbmv6oqAfZBN8DBlrlQVDdO6RVKfMAe2gwo7hBCLVhZCs8QgeVW6oy2lAZDZD"
 WA_PHONE_ID = "1043445438845393"
+UK_TZ = ZoneInfo("Europe/London")
+WA_SEND_HOUR_START = 8
+WA_SEND_HOUR_END = 21
 
 def send_whatsapp(to_number, message):
     """Send WhatsApp message. to_number in E.164 format e.g. 447834238110"""
@@ -69,6 +73,52 @@ def sb_patch(path, data):
         data=payload, headers={**SB_HEADERS, "Content-Type": "application/json", "Prefer": "return=minimal"}, method='PATCH')
     return urllib.request.urlopen(req, timeout=15).status
 
+def sb_post(path, data, prefer="return=minimal"):
+    payload = json.dumps(data).encode()
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/{path}",
+        data=payload,
+        headers={**SB_HEADERS, "Content-Type": "application/json", "Prefer": prefer},
+        method='POST'
+    )
+    return urllib.request.urlopen(req, timeout=15)
+
+
+def format_phone_uk(phone):
+    if not phone:
+        return None
+    cleaned = re.sub(r'[^\d+]', '', phone).replace('+', '')
+    if cleaned.startswith('44'):
+        return cleaned
+    if cleaned.startswith('0'):
+        return '44' + cleaned[1:]
+    return '44' + cleaned
+
+
+def within_whatsapp_hours(now=None):
+    now = now or datetime.now(timezone.utc)
+    local = now.astimezone(UK_TZ)
+    return WA_SEND_HOUR_START <= local.hour < WA_SEND_HOUR_END
+
+
+def next_whatsapp_send_time(now=None):
+    now = now or datetime.now(timezone.utc)
+    local = now.astimezone(UK_TZ)
+    if local.hour < WA_SEND_HOUR_START:
+        target = local.replace(hour=WA_SEND_HOUR_START, minute=0, second=0, microsecond=0)
+    else:
+        target = (local + timedelta(days=1)).replace(hour=WA_SEND_HOUR_START, minute=0, second=0, microsecond=0)
+    return target.astimezone(timezone.utc)
+
+
+def whatsapp_link(phone, message):
+    phone = format_phone_uk(phone)
+    if not phone:
+        return None
+    from urllib.parse import quote
+    return f"https://wa.me/{phone}?text={quote(message)}"
+
+
 def plain_text_to_html(body_text):
     """Convert plain-text-ish email copy into a simple HTML version with clickable links."""
     body_html = html.escape(body_text)
@@ -119,6 +169,59 @@ def fmt_dt(dt_str):
         return dt.strftime("%A %-d %B at %-I:%M%p GMT").replace("AM","am").replace("PM","pm")
     except: return dt_str[:16]
 
+
+def queue_whatsapp_confirmation(lead):
+    if not lead.get('phone'):
+        return False
+    name_first = lead['name'].split()[0] if lead.get('name') else "there"
+    call_time = fmt_dt(lead.get('call_datetime'))
+    msg_tpl = get_template('whatsapp_confirmation')
+    message = render_template(msg_tpl, name_first, call_time) if msg_tpl else f"Hey {name_first} — just confirming our call for {call_time}. Zoom link: {ZOOM_LINK}"
+    send_after = datetime.now(timezone.utc) if within_whatsapp_hours() else next_whatsapp_send_time()
+    payload = {
+        "lead_id": lead['id'],
+        "kind": "confirmation",
+        "message": message,
+        "phone": format_phone_uk(lead.get('phone')),
+        "send_after": send_after.isoformat(),
+        "status": "pending",
+    }
+    try:
+        sb_post('whatsapp_queue', payload)
+        return True
+    except Exception as e:
+        print(f"  WhatsApp queue failed: {e}")
+        return False
+
+
+def process_whatsapp_queue():
+    now_iso = datetime.now(timezone.utc).isoformat()
+    try:
+        queued = sb_get(f"whatsapp_queue?status=eq.pending&send_after=lte.{now_iso}&order=created_at.asc&select=*")
+    except Exception as e:
+        print(f"WhatsApp queue fetch failed: {e}")
+        return
+
+    if not queued:
+        print("No WhatsApp messages ready")
+        return
+
+    print(f"WhatsApp ready: {len(queued)}")
+    for item in queued:
+        link = whatsapp_link(item.get('phone'), item.get('message', ''))
+        if not link:
+            sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
+                "status": "failed",
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+                "fail_reason": "missing or invalid phone"
+            })
+            continue
+        print(f"  {item['id']} -> {link}")
+        sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
+            "status": "ready",
+            "sent_at": datetime.now(timezone.utc).isoformat()
+        })
+
 # ─── CONFIRMATION EMAIL ──────────────────────────────────────────────────────
 def send_confirmation(lead_id):
     leads = sb_get(f"leads?id=eq.{lead_id}&select=*")
@@ -165,12 +268,9 @@ bigfish@testtubemarketing.com
 www.testtubemarketing.com
 """
     send_email(lead['email'], subject, text)
-    # Also send WhatsApp if phone available
+    # Queue WhatsApp confirmation for personal-number workflow
     if lead.get('phone'):
-        phone = lead['phone'].replace(' ', '').replace('+', '')
-        if not phone.startswith('44'): phone = '44' + phone.lstrip('0')
-        wa_msg = f"Hi {name_first}, your Marketing Growth Call with Nick is confirmed for {call_time}. Join here: {ZOOM_LINK}"
-        send_whatsapp(phone, wa_msg)
+        queue_whatsapp_confirmation(lead)
     sb_patch(f"leads?id=eq.{lead_id}", {
         "last_contact_at": datetime.now(timezone.utc).isoformat(),
         "confirm_pending": False,
@@ -180,7 +280,7 @@ www.testtubemarketing.com
 def process_pending_confirmations():
     """Pick up any leads flagged confirm_pending=true and send their confirmation email."""
     # Only process leads that actually have a call_datetime (no TBC emails)
-    pending = sb_get("leads?confirm_pending=eq.true&booking_completed=eq.true&call_datetime=not.is.null&select=id,name,email")
+    pending = sb_get("leads?confirm_pending=eq.true&booking_completed=eq.true&call_datetime=not.is.null&select=id,name,email,phone,call_datetime")
     if not pending:
         print("No pending confirmations")
         return
@@ -311,7 +411,9 @@ if __name__ == "__main__":
         send_reminders()
     elif cmd == "weekly_report":
         send_weekly_report()
+    elif cmd == "process_whatsapp_queue":
+        process_whatsapp_queue()
     elif cmd == "test":
         send_email(GMAIL_USER, "✅ Nucleus email test", "Email system working correctly.")
     else:
-        print("Usage: python3 email.py <confirm <lead_id> | reminders | weekly_report | test>")
+        print("Usage: python3 email.py <confirm <lead_id> | pending_confirmations | reminders | weekly_report | process_whatsapp_queue | test>")
