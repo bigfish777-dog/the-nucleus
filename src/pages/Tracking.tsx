@@ -33,17 +33,7 @@ type TrackingEvent = {
   utm_campaign?: string | null
   utm_content?: string | null
   session_id: string
-}
-
-type LeadRow = {
-  created_at: string
-  booked_at?: string | null
-  booking_completed?: boolean
-  stage: string
-  email?: string | null
-  utm_source?: string | null
-  utm_campaign?: string | null
-  utm_content?: string | null
+  event_type: 'page_view' | 'lead_capture' | 'booking_completed'
 }
 
 function dateKey(date: Date) {
@@ -57,7 +47,6 @@ function fmtPct(numerator: number, denominator: number) {
 
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
-  const [leads, setLeads] = React.useState<LeadRow[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
@@ -69,31 +58,26 @@ export default function Tracking() {
         const sinceIso = since.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
-        const [eventsRes, leadsRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&event_type=eq.page_view&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id`, { headers }),
-          fetch(`${SUPABASE_URL}/rest/v1/leads?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,booked_at,booking_completed,stage,email,utm_source,utm_campaign,utm_content`, { headers }),
-        ])
-
-        const [eventsJson, leadsJson] = await Promise.all([eventsRes.json(), leadsRes.json()])
+        const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type`, { headers })
+        const eventsJson = await eventsRes.json()
         setEvents(Array.isArray(eventsJson) ? eventsJson : [])
-        setLeads(Array.isArray(leadsJson) ? leadsJson : [])
       } catch {
         setEvents([])
-        setLeads([])
       }
       setLoading(false)
     }
     load()
   }, [])
 
-  const realLeads = leads.filter(lead => !lead.email?.includes('@testtubemarketing.com') && !['spam', 'test'].includes(lead.stage))
-  const landingViews = events.filter(e => e.page_path === '/')
-  const bookingViews = events.filter(e => e.page_path === '/book')
+  const landingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/')
+  const bookingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/book')
+  const leadCaptures = events.filter(e => e.event_type === 'lead_capture')
+  const bookingsCompleted = events.filter(e => e.event_type === 'booking_completed')
 
   const totalVisits = landingViews.length
   const totalBookPageViews = bookingViews.length
-  const totalLeads = realLeads.length
-  const totalBooked = realLeads.filter(lead => lead.booking_completed).length
+  const totalLeads = leadCaptures.length
+  const totalBooked = bookingsCompleted.length
 
   const now = new Date()
   const daily = Array.from({ length: 30 }, (_, idx) => {
@@ -101,28 +85,24 @@ export default function Tracking() {
     day.setDate(now.getDate() - (29 - idx))
     const key = dateKey(day)
     const visits = landingViews.filter(event => event.created_at.slice(0, 10) === key).length
-    const leadsCount = realLeads.filter(lead => lead.created_at.slice(0, 10) === key).length
-    const booked = realLeads.filter(lead => lead.booked_at?.slice(0, 10) === key).length
-    return { label: key.slice(5), visits, leads: leadsCount, booked }
+    const leads = leadCaptures.filter(event => event.created_at.slice(0, 10) === key).length
+    const booked = bookingsCompleted.filter(event => event.created_at.slice(0, 10) === key).length
+    return { label: key.slice(5), visits, leads, booked }
   })
 
   const sourceMap = new Map<string, { visits: number; leads: number; booked: number }>()
-  for (const event of landingViews) {
+  for (const event of events) {
     const key = event.utm_campaign || event.utm_source || event.utm_content || 'Direct / unknown'
     const row = sourceMap.get(key) || { visits: 0, leads: 0, booked: 0 }
-    row.visits += 1
-    sourceMap.set(key, row)
-  }
-  for (const lead of realLeads) {
-    const key = lead.utm_campaign || lead.utm_source || lead.utm_content || 'Direct / unknown'
-    const row = sourceMap.get(key) || { visits: 0, leads: 0, booked: 0 }
-    row.leads += 1
-    if (lead.booking_completed) row.booked += 1
+    if (event.event_type === 'page_view' && event.page_path === '/') row.visits += 1
+    if (event.event_type === 'lead_capture') row.leads += 1
+    if (event.event_type === 'booking_completed') row.booked += 1
     sourceMap.set(key, row)
   }
 
   const sourceRows = Array.from(sourceMap.entries())
     .map(([source, data]) => ({ source, ...data, visitToLead: fmtPct(data.leads, data.visits), leadToBooked: fmtPct(data.booked, data.leads) }))
+    .filter(row => row.visits || row.leads || row.booked)
     .sort((a, b) => b.visits - a.visits)
     .slice(0, 8)
 
@@ -130,7 +110,7 @@ export default function Tracking() {
     <div className="space-y-5">
       <div>
         <h1 className="text-xl font-bold" style={{ color: white }}>Tracking</h1>
-        <p className="text-sm mt-0.5" style={{ color: muted }}>Top-of-funnel visibility for the last 30 days</p>
+        <p className="text-sm mt-0.5" style={{ color: muted }}>Real event data from book.testtubemarketing.com only</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -200,7 +180,7 @@ export default function Tracking() {
                 </tr>
               ))}
               {!sourceRows.length && !loading && (
-                <tr><td colSpan={6} style={{ padding: '16px 0', color: muted }}>No tracking data yet. As soon as the landing page receives traffic, it’ll start filling in here.</td></tr>
+                <tr><td colSpan={6} style={{ padding: '16px 0', color: muted }}>No tracking data yet. As soon as the live pages get traffic, this will fill from real page events only.</td></tr>
               )}
             </tbody>
           </table>
