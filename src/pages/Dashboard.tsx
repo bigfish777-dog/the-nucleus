@@ -15,6 +15,13 @@ const muted = '#8891A8'
 const border = 'rgba(255,255,255,0.08)'
 const surface = '#161B27'
 const green = '#22C55E'
+const DASHBOARD_OVERRIDES = {
+	liveProposals: 8,
+	revenueThisMonth: 0,
+	revenueQuarter: 0,
+	totalRevenueClosed: 38805,
+	totalDealsClosed: 6
+}
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -126,12 +133,12 @@ export default function Dashboard() {
   // Revenue this month — use the first day of current month dynamically
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   // Use last_contact_at as close date (stored there to avoid auto-update trigger overwriting)
-  const liveRevThisMonth = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  const liveRevThisMonthRaw = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   // Exclude Michael O'Reilly (referral) from ad-attributed revenue on ROAS calc
   // Revenue closed = ALL TIME total from closed won leads
-  const liveRevQ = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
-  const liveProposalsSent = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
+  const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
   React.useEffect(() => {
     // Load ALL time ad spend for accurate cost per call
@@ -140,7 +147,12 @@ export default function Dashboard() {
     }).then(r => r.json()).then(rows => setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))).catch(() => {})
   }, [])
   const liveCostPerCall = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
-  const liveClosedWon = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+  const liveClosedWonRaw = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+  const liveRevThisMonth = DASHBOARD_OVERRIDES.revenueThisMonth ?? liveRevThisMonthRaw
+  const liveRevQ = DASHBOARD_OVERRIDES.revenueQuarter ?? liveRevQRaw
+  const liveProposalsSent = DASHBOARD_OVERRIDES.liveProposals ?? liveProposalsSentRaw
+  const liveClosedWon = DASHBOARD_OVERRIDES.totalDealsClosed ?? liveClosedWonRaw
+  const liveTotalRevenueClosed = DASHBOARD_OVERRIDES.totalRevenueClosed ?? liveRevQRaw
   // Cost per qualified = 28d spend / total qualified leads (all time)
   const totalQualified = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
 
@@ -234,7 +246,7 @@ export default function Dashboard() {
           sub="Rolling 4-week average" />
         <MetricCard label="Cost per qualified (4wk)" value={totalQualified ? `£${Math.round((liveSpend28d || last4WeeksSpend) / totalQualified)}` : '£0'}
           sub="Calls that reached Qualified+" />
-        <MetricCard label="Total revenue closed" value={`£${liveRevQ.toLocaleString()}`}
+        <MetricCard label="Total revenue closed" value={`£${liveTotalRevenueClosed.toLocaleString()}`}
           sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
         <MetricCard label="Active creatives" value={String(SEED_CREATIVES.filter(c=>c.status==='active').length)}
           sub={`${SEED_CREATIVES.filter(c=>c.status==='paused').length} paused`} />
