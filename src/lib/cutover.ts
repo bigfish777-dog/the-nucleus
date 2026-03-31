@@ -1,5 +1,5 @@
 export const NEW_FUNNEL_CUTOVER = '2026-03-31T00:00:00.000Z'
-export const TRACKING_RESET_CUTOVER = '2026-03-31T18:14:00.000Z'
+export const TRACKING_RESET_CUTOVER = '2026-03-31T18:20:00.000+01:00'
 
 export function isPostCutover(dateLike?: string | null) {
   if (!dateLike) return false
