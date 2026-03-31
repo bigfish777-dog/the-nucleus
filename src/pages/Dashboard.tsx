@@ -23,6 +23,7 @@ const DASHBOARD_OVERRIDES = {
 	revenueQuarter: 0,
 	totalRevenueClosed: 38805,
 	totalDealsClosed: 6,
+	costPerCall: 191,
 	costPerProposal: 467
 }
 
@@ -149,7 +150,7 @@ export default function Dashboard() {
       headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s' }
     }).then(r => r.json()).then(rows => setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))).catch(() => {})
   }, [])
-  const liveCostPerCall = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
+  const liveCostPerCallRaw = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
   const liveClosedWonRaw = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
   const liveAllBookedDisplay = DASHBOARD_OVERRIDES.callsBookedTotal ?? liveAllBooked
   const liveShowRate = DASHBOARD_OVERRIDES.overallShowRate ?? liveShowRateRaw
@@ -158,6 +159,7 @@ export default function Dashboard() {
   const liveProposalsSent = DASHBOARD_OVERRIDES.liveProposals ?? liveProposalsSentRaw
   const liveClosedWon = DASHBOARD_OVERRIDES.totalDealsClosed ?? liveClosedWonRaw
   const liveTotalRevenueClosed = DASHBOARD_OVERRIDES.totalRevenueClosed ?? liveRevQRaw
+  const liveCostPerCall = DASHBOARD_OVERRIDES.costPerCall ?? liveCostPerCallRaw
   const liveCostPerProposal = DASHBOARD_OVERRIDES.costPerProposal ?? (liveProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveProposalsSent) : 0)
   // Live flags from Supabase data
   const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < now)
