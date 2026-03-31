@@ -1,10 +1,10 @@
 """
 The Nucleus — Email automation
-Handles: confirmation emails, call reminders, weekly reports
+Handles: confirmation emails, call reminders, weekly reports, WhatsApp confirmations
 Run via: python3 automations/email.py <command>
-Commands: confirm <lead_id>, reminders, weekly_report
+Commands: confirm <lead_id>, reminders, weekly_report, process_whatsapp_queue
 """
-import smtplib, json, urllib.request, urllib.parse, sys, os, re, html
+import smtplib, json, urllib.request, urllib.parse, sys, os, re, html, subprocess
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta, timezone
@@ -15,32 +15,53 @@ GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "ndcrbnkssmuetnok")
 SUPABASE_URL = "https://oirnxlidjgsbcyhtxkse.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s"
 WEEKLY_REPORT_RECIPIENTS = ["bigfish@testtubemarketing.com", "ad@testtubemarketing.com"]
-WA_TOKEN = "EAAU8j14lU7EBRM4htCZAXLKC5I7knJY4aM59okwNdZBucSXWJxpD8CL2BH1LzrEqE6epAQqRrH3t1EcsDsvZAYowUPm3dd3okIDXhveZBY374fInzUlfZCUJca0bA9ZBgkQReEj8AZCcYfSbmv6oqAfZBN8DBlrlQVDdO6RVKfMAe2gwo7hBCLVhZCs8QgeVW6oy2lAZDZD"
-WA_PHONE_ID = "1043445438845393"
+OPENCLAW_BIN = os.environ.get("OPENCLAW_BIN", "/data/.npm-global/bin/openclaw")
 UK_TZ = ZoneInfo("Europe/London")
 WA_SEND_HOUR_START = 8
 WA_SEND_HOUR_END = 21
 
 def send_whatsapp(to_number, message):
-    """Send WhatsApp message. to_number in E.164 format e.g. 447834238110"""
-    import json as _json
-    payload = _json.dumps({
-        "messaging_product": "whatsapp",
-        "to": to_number.replace("+", ""),
-        "type": "text",
-        "text": {"body": message}
-    }).encode()
-    req = urllib.request.Request(
-        f"https://graph.facebook.com/v19.0/{WA_PHONE_ID}/messages",
-        data=payload,
-        headers={"Authorization": f"Bearer {WA_TOKEN}", "Content-Type": "application/json"}
-    )
+    """Send WhatsApp message via OpenClaw's authenticated personal-number session."""
+    normalized = format_phone_uk(to_number)
+    if not normalized:
+        print("  WhatsApp failed: missing or invalid phone")
+        return False
+    target = f"+{normalized}"
     try:
-        resp = urllib.request.urlopen(req, timeout=15)
-        return True
+        result = subprocess.run(
+            [
+                OPENCLAW_BIN,
+                "message",
+                "send",
+                "--channel", "whatsapp",
+                "--target", target,
+                "--message", message,
+                "--json",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
     except Exception as e:
         print(f"  WhatsApp failed: {e}")
         return False
+
+    if result.returncode == 0:
+        try:
+            payload = json.loads(result.stdout or "{}")
+            message_id = (((payload or {}).get("payload") or {}).get("result") or {}).get("messageId")
+            if message_id:
+                print(f"  ✓ WhatsApp sent to {target} ({message_id})")
+            else:
+                print(f"  ✓ WhatsApp sent to {target}")
+        except Exception:
+            print(f"  ✓ WhatsApp sent to {target}")
+        return True
+
+    err = (result.stderr or result.stdout or "unknown error").strip()
+    print(f"  WhatsApp failed: {err}")
+    return False
 ZOOM_LINK = "https://us06web.zoom.us/j/8792020476"
 
 SB_HEADERS = {"apikey": SUPABASE_ANON_KEY, "Authorization": f"Bearer {SUPABASE_ANON_KEY}"}
@@ -208,19 +229,28 @@ def process_whatsapp_queue():
 
     print(f"WhatsApp ready: {len(queued)}")
     for item in queued:
-        link = whatsapp_link(item.get('phone'), item.get('message', ''))
-        if not link:
+        phone = item.get('phone')
+        message = item.get('message', '')
+        if not phone or not message:
             sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
                 "status": "failed",
                 "failed_at": datetime.now(timezone.utc).isoformat(),
-                "fail_reason": "missing or invalid phone"
+                "fail_reason": "missing phone or message"
             })
             continue
-        print(f"  {item['id']} -> {link}")
-        sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
-            "status": "ready",
-            "sent_at": datetime.now(timezone.utc).isoformat()
-        })
+
+        if send_whatsapp(phone, message):
+            sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
+                "status": "sent",
+                "sent_at": datetime.now(timezone.utc).isoformat(),
+                "fail_reason": None
+            })
+        else:
+            sb_patch(f"whatsapp_queue?id=eq.{item['id']}", {
+                "status": "failed",
+                "failed_at": datetime.now(timezone.utc).isoformat(),
+                "fail_reason": "openclaw send failed"
+            })
 
 # ─── CONFIRMATION EMAIL ──────────────────────────────────────────────────────
 def send_confirmation(lead_id):
