@@ -16,13 +16,14 @@ const border = 'rgba(255,255,255,0.08)'
 const surface = '#161B27'
 const green = '#22C55E'
 const DASHBOARD_OVERRIDES = {
-	callsBookedTotal: null as number | null,
-	overallShowRate: null as number | null,
+	callsBookedTotal: 49,
+	overallShowRate: 59,
 	liveProposals: 8,
 	revenueThisMonth: 0,
 	revenueQuarter: 0,
 	totalRevenueClosed: 38805,
-	totalDealsClosed: 6
+	totalDealsClosed: 6,
+	costPerProposal: 467
 }
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -157,9 +158,7 @@ export default function Dashboard() {
   const liveProposalsSent = DASHBOARD_OVERRIDES.liveProposals ?? liveProposalsSentRaw
   const liveClosedWon = DASHBOARD_OVERRIDES.totalDealsClosed ?? liveClosedWonRaw
   const liveTotalRevenueClosed = DASHBOARD_OVERRIDES.totalRevenueClosed ?? liveRevQRaw
-  // Cost per qualified = 28d spend / total qualified leads (all time)
-  const totalQualified = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
-
+  const liveCostPerProposal = DASHBOARD_OVERRIDES.costPerProposal ?? (liveProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveProposalsSent) : 0)
   // Live flags from Supabase data
   const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < now)
   const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (now.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
@@ -248,8 +247,8 @@ export default function Dashboard() {
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
         <MetricCard label="Cost per call (all time)" value={`£${liveCostPerCall}`}
           sub="Rolling 4-week average" />
-        <MetricCard label="Cost per qualified (4wk)" value={totalQualified ? `£${Math.round((liveSpend28d || last4WeeksSpend) / totalQualified)}` : '£0'}
-          sub="Calls that reached Qualified+" />
+        <MetricCard label="Cost per proposal" value={`£${liveCostPerProposal}`}
+          sub="Cost to reach proposal stage" />
         <MetricCard label="Total revenue closed" value={`£${liveTotalRevenueClosed.toLocaleString()}`}
           sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
         <MetricCard label="Active creatives" value={String(SEED_CREATIVES.filter(c=>c.status==='active').length)}
