@@ -16,6 +16,8 @@ const border = 'rgba(255,255,255,0.08)'
 const surface = '#161B27'
 const green = '#22C55E'
 const DASHBOARD_OVERRIDES = {
+	callsBookedTotal: null as number | null,
+	overallShowRate: null as number | null,
 	liveProposals: 8,
 	revenueThisMonth: 0,
 	revenueQuarter: 0,
@@ -129,7 +131,7 @@ export default function Dashboard() {
     ((l.call_datetime || '') >= mgcStart || (l.booked_at || '') >= mgcStart)
   ).length
   const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
-  const liveShowRate = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
+  const liveShowRateRaw = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
   // Revenue this month — use the first day of current month dynamically
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   // Use last_contact_at as close date (stored there to avoid auto-update trigger overwriting)
@@ -148,6 +150,8 @@ export default function Dashboard() {
   }, [])
   const liveCostPerCall = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
   const liveClosedWonRaw = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
+  const liveAllBookedDisplay = DASHBOARD_OVERRIDES.callsBookedTotal ?? liveAllBooked
+  const liveShowRate = DASHBOARD_OVERRIDES.overallShowRate ?? liveShowRateRaw
   const liveRevThisMonth = DASHBOARD_OVERRIDES.revenueThisMonth ?? liveRevThisMonthRaw
   const liveRevQ = DASHBOARD_OVERRIDES.revenueQuarter ?? liveRevQRaw
   const liveProposalsSent = DASHBOARD_OVERRIDES.liveProposals ?? liveProposalsSentRaw
@@ -235,8 +239,8 @@ export default function Dashboard() {
             return `${diff >= 0 ? '+' : ''}${diff} vs last week`
           })()}
           trend={liveThisWeekBooked >= activeLeadsData.filter((l: Lead) => l.booked_at && new Date(l.booked_at) >= lastMonday && new Date(l.booked_at) < thisMonday).length ? 'up' : 'down'} color={teal} />
-        <MetricCard label="Show rate (30d)" value={`${liveShowRate}%`}
-          sub={`${liveAllBooked} calls booked total`}
+        <MetricCard label="Overall show rate" value={`${liveShowRate}%`}
+          sub={`${liveAllBookedDisplay} calls booked total`}
           trend={showRate >= 70 ? 'up' : 'down'} />
         <MetricCard label="Live proposals" value={String(liveProposalsSent)}
           sub="Awaiting decision" color={amber} />
