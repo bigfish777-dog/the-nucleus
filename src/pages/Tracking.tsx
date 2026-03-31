@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts'
+import { TRACKING_RESET_CUTOVER } from '../lib/cutover'
 
 const pink = '#FF0D64'
 const teal = '#3FEACE'
@@ -54,7 +55,12 @@ export default function Tracking() {
       setLoading(true)
       try {
         const since = new Date()
-        since.setDate(since.getDate() - 30)
+        const cutover = new Date(TRACKING_RESET_CUTOVER)
+        if (cutover > since) {
+          since.setDate(since.getDate() - 30)
+        } else {
+          since.setTime(cutover.getTime())
+        }
         const sinceIso = since.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
@@ -111,6 +117,7 @@ export default function Tracking() {
       <div>
         <h1 className="text-xl font-bold" style={{ color: white }}>Tracking</h1>
         <p className="text-sm mt-0.5" style={{ color: muted }}>Real event data from book.testtubemarketing.com only</p>
+        <p className="text-xs mt-1" style={{ color: muted }}>Reset from {new Date(TRACKING_RESET_CUTOVER).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
