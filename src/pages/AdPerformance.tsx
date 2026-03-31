@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { isLeadInNewFunnel } from '../lib/cutover'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'; const green = '#22C55E'
@@ -33,7 +34,7 @@ export default function AdPerformance() {
     const impressions = perf.reduce((s, p) => s + p.impressions, 0)
     const clicks = perf.reduce((s, p) => s + p.clicks, 0)
     const ctr = impressions ? (clicks / impressions) * 100 : 0
-    const creativeLeads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value)
+    const creativeLeads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l))
     const leads = creativeLeads.length
     const showed = creativeLeads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
     const qualified = creativeLeads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length

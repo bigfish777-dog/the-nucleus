@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, Tag, GitBranch } from 'lucide-react'
+import { isLeadInNewFunnel } from '../lib/cutover'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'
@@ -28,9 +29,9 @@ export default function CreativeLibrary() {
   const creativeRows = SEED_CREATIVES.map(creative => {
     const perf = SEED_AD_PERFORMANCE.filter(p => p.creative_id === creative.id)
     const spend = perf.reduce((s, p) => s + p.spend, 0)
-    const leads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value).length
-    const closes = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && l.stage === 'closed_won').length
-    const revenue = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && l.revenue).reduce((s, l) => s + (l.revenue || 0), 0)
+    const leads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l)).length
+    const closes = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l) && l.stage === 'closed_won').length
+    const revenue = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l) && l.revenue).reduce((s, l) => s + (l.revenue || 0), 0)
     const roas = spend ? revenue / spend : 0
     const iteratedFrom = creative.iterated_from ? SEED_CREATIVES.find(c => c.id === creative.iterated_from) : null
     const iterations = SEED_CREATIVES.filter(c => c.iterated_from === creative.id)
@@ -193,7 +194,7 @@ export default function CreativeLibrary() {
                             ['Total spend', `£${Math.round(spend).toLocaleString()}`],
                             ['Leads generated', String(leads)],
                             ['CPL', leads ? `£${Math.round(spend/leads)}` : '—'],
-                            ['Qualified', String(SEED_LEADS.filter(l=>l.utm_content===creative.utm_content_value && ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length)],
+                            ['Qualified', String(SEED_LEADS.filter(l=>l.utm_content===creative.utm_content_value && isLeadInNewFunnel(l) && ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length)],
                             ['Closes', String(closes)],
                             ['Revenue', revenue > 0 ? `£${revenue.toLocaleString()}` : '—'],
                             ['ROAS', roas > 0 ? `${roas.toFixed(2)}x` : '—'],

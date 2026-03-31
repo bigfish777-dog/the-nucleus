@@ -6,6 +6,7 @@ import {
 import React, { useState } from 'react'
 import type { Lead } from '../types'
 import { TrendingUp, TrendingDown, AlertCircle, Calendar } from 'lucide-react'
+import { NEW_FUNNEL_CUTOVER, isLeadInNewFunnel } from '../lib/cutover'
 
 const pink = '#FF0D64'
 const teal = '#3FEACE'
@@ -92,7 +93,8 @@ export default function Dashboard() {
   // Exclude spam/test stages AND internal test email addresses
   const activeLeadsData = (liveLeads || leads).filter((l: Lead) => 
     !['spam','test'].includes(l.stage) && 
-    !l.email?.includes('@testtubemarketing.com')
+    !l.email?.includes('@testtubemarketing.com') &&
+    isLeadInNewFunnel(l)
   )
 
   // ── Consistent date boundaries ────────────────────────────────────────────
@@ -207,6 +209,7 @@ export default function Dashboard() {
       <div>
         <h1 className="text-xl font-bold" style={{ color: '#F0F2F8' }}>Dashboard</h1>
         <p className="text-sm mt-0.5" style={{ color: muted }}>{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        <p className="text-xs mt-1" style={{ color: muted }}>New funnel metrics from {new Date(NEW_FUNNEL_CUTOVER).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} onward</p>
       </div>
 
       {/* ── Metric cards ── */}
