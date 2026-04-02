@@ -554,6 +554,11 @@ export default function Pipeline() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flex: 1, maxWidth: 320 }}>
+        <button onClick={() => setShowAddLead(true)}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0"
+          style={{ background: teal, color: '#0D1117' }}>
+          <Plus size={12} /> Add Lead
+        </button>
         <input
           type="text"
           value={search}
@@ -571,12 +576,6 @@ export default function Pipeline() {
           style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>
           {showArchive ? <EyeOff size={12}/> : <Eye size={12}/>}
           Archive ({archiveLeads.length})
-        </button>
-        <button onClick={() => setShowAddLead(true)}
-          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg"
-          style={{ background: pink, color: '#fff' }}>
-          <Plus size={12} />
-          Add Lead
         </button>
       </div>
 
