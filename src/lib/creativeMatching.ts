@@ -18,3 +18,18 @@ export function findCreativeForLead(creatives: AdCreative[], lead?: Pick<Lead, '
 export function leadsForCreative<T extends Pick<Lead, 'utm_content'>>(leads: T[], creative: AdCreative) {
   return leads.filter((lead) => matchesCreativeValue(creative, lead.utm_content))
 }
+
+export function getCreativeAttributionLabel(creative: AdCreative | null, utmContent?: string | null) {
+  if (!creative) return utmContent || 'Unknown'
+  const raw = normalize(utmContent)
+  const matchedByMetaId = !!creative.meta_creative_id && raw === normalize(creative.meta_creative_id)
+  const matchedByHook = raw === normalize(creative.utm_content_value)
+
+  if (matchedByMetaId) {
+    return `${creative.name} · via Meta creative ID`
+  }
+  if (matchedByHook) {
+    return `${creative.name} · via hook alias`
+  }
+  return creative.name
+}

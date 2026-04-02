@@ -1,4 +1,5 @@
 export type PipelineStage =
+  | 'leads'
   | 'booked'
   | 'cancelled'
   | 'no_show'

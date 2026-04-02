@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
 import { updateLeadStage } from '../lib/supabase'
-import { findCreativeForLead } from '../lib/creativeMatching'
+import { findCreativeForLead, getCreativeAttributionLabel } from '../lib/creativeMatching'
 import { X, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
@@ -21,6 +21,7 @@ const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string 
 
 // ── Archived stages (tracked but not in main pipeline) ───────────────────────
 const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
+  { stage: 'leads', label: 'Leads' },
   { stage: 'no_show', label: 'No-Show' },
   { stage: 'second_call_no_show', label: '2nd Call No-Show' },
   { stage: 'cancelled', label: 'Cancelled' },
@@ -37,6 +38,7 @@ const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = 
   { stage: 'booked', label: 'Call Booked', group: 'Active' },
   { stage: 'qualified', label: 'Proposal in Prep', group: 'Active' },
   { stage: 'proposal_sent', label: 'Proposal Sent', group: 'Active' },
+  { stage: 'leads', label: 'Lead only / not booked', group: 'Archive' },
   { stage: 'no_show', label: 'No-Show (1st call)', group: 'Archive' },
   { stage: 'second_call_no_show', label: 'No-Show (2nd call)', group: 'Archive' },
   { stage: 'cancelled', label: 'Cancelled / Rescheduled', group: 'Archive' },
@@ -77,7 +79,7 @@ function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
       </div>
       {lead.industry && <p className="text-[11px]" style={{ color: muted }}>{lead.industry}</p>}
       {lead.revenue_range && <p className="text-[11px]" style={{ color: muted }}>{lead.revenue_range}</p>}
-      {creative && <p className="text-[10px] mt-1 truncate" style={{ color: pink }}>{creative.name.split(' — ')[0]}</p>}
+      {creative && <p className="text-[10px] mt-1 truncate" style={{ color: pink }}>{getCreativeAttributionLabel(creative, lead.utm_content)}</p>}
       {lead.proposal_value && Number(lead.proposal_value) > 0 && (
         <p className="text-[11px] mt-1 font-bold" style={{ color: amber }}>£{Number(lead.proposal_value).toLocaleString()}</p>
       )}
@@ -254,6 +256,7 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
               <p className="text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: muted }}>Source Creative</p>
               <div className="p-3 rounded-lg" style={{ background: `${pink}08`, border: `1px solid ${pink}25` }}>
                 <p className="text-sm font-semibold" style={{ color: pink }}>{creative.name}</p>
+                <p className="text-[10px] mt-1" style={{ color: muted }}>{getCreativeAttributionLabel(creative, lead.utm_content)}</p>
                 {creative.hook_text && <p className="text-xs mt-1 italic" style={{ color: muted }}>&ldquo;{creative.hook_text}&rdquo;</p>}
               </div>
             </div>

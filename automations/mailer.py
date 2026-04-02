@@ -15,6 +15,7 @@ GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "ndcrbnkssmuetnok")
 SUPABASE_URL = "https://oirnxlidjgsbcyhtxkse.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s"
 WEEKLY_REPORT_RECIPIENTS = ["bigfish@testtubemarketing.com", "ad@testtubemarketing.com"]
+OWNER_NOTIFICATION_RECIPIENTS = ["bigfish@testtubemarketing.com"]
 OPENCLAW_BIN = os.environ.get("OPENCLAW_BIN", "/data/.npm-global/bin/openclaw")
 UK_TZ = ZoneInfo("Europe/London")
 WA_SEND_HOUR_START = 8
@@ -305,6 +306,38 @@ www.testtubemarketing.com
         "last_contact_at": datetime.now(timezone.utc).isoformat(),
         "confirm_pending": False,
     })
+    send_owner_booking_notification(lead_id)
+
+
+
+def send_owner_booking_notification(lead_id):
+    leads = sb_get(f"leads?id=eq.{lead_id}&select=*")
+    if not leads:
+        print("Lead not found")
+        return
+    lead = leads[0]
+    subject = f"New call booked — {lead.get('name') or 'Unknown lead'}"
+    creative = lead.get('utm_content') or 'unknown'
+    body = f"""A new Marketing Growth Call has been booked.
+
+Name: {lead.get('name') or '—'}
+Email: {lead.get('email') or '—'}
+Phone: {lead.get('phone') or '—'}
+Call time: {fmt_dt(lead.get('call_datetime'))}
+UTM source: {lead.get('utm_source') or '—'}
+UTM campaign: {lead.get('utm_campaign') or '—'}
+UTM content: {creative}
+Website: {lead.get('website') or '—'}
+Business type: {lead.get('industry') or '—'}
+Revenue: {lead.get('revenue_range') or '—'}
+Client value: {lead.get('client_value') or '—'}
+Challenge: {lead.get('challenge') or '—'}
+Readiness: {lead.get('readiness') or '—'}
+
+Dashboard: https://dash.testtubemarketing.com
+"""
+    for recipient in OWNER_NOTIFICATION_RECIPIENTS:
+        send_email(recipient, subject, body)
 
 # ─── PROCESS PENDING CONFIRMATIONS ───────────────────────────────────────────
 def process_pending_confirmations():
