@@ -43,7 +43,7 @@ export default function Proposals() {
       }
 
       setStatus('success')
-      setMessage(data.url || `https://proposals.testtubemarketing.com/${slug}`)
+      setMessage(`https://proposals.testtubemarketing.com/${slug}`)
       setDocUrl('')
       setSlug('')
     } catch (err) {
@@ -136,7 +136,7 @@ export default function Proposals() {
               opacity: (!docUrl || !slug) ? 0.5 : 1,
             }}
           >
-            {status === 'submitting' ? 'Generating proposal...' : 'Generate & Publish'}
+            {status === 'submitting' ? 'Submitting...' : 'Generate & Publish'}
           </button>
         </form>
 
@@ -151,7 +151,7 @@ export default function Proposals() {
             color: '#22C55E',
             lineHeight: 1.6,
           }}>
-            Proposal published successfully.<br />
+            Job queued — Fishtail will build and publish it shortly.<br />
             <a
               href={message}
               target="_blank"
