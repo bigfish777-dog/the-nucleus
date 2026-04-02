@@ -1,0 +1,15 @@
+[Unit]
+Description=The Nucleus confirmation webhook
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/data/.openclaw/workspace/the-nucleus/automations
+ExecStart=/usr/bin/python3 /data/.openclaw/workspace/the-nucleus/automations/confirmation_webhook.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/tmp/nucleus-confirmation-webhook.log
+StandardError=append:/tmp/nucleus-confirmation-webhook.log
+
+[Install]
+WantedBy=multi-user.target

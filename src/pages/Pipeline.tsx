@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
 import { updateLeadStage } from '../lib/supabase'
+import { findCreativeForLead } from '../lib/creativeMatching'
 import { X, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
@@ -47,7 +48,6 @@ const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = 
   { stage: 'closed_lost', label: 'Closed Lost', group: 'Closed' },
 ]
 
-const creativeMap = Object.fromEntries(SEED_CREATIVES.map(c => [c.utm_content_value, c]))
 const now = new Date()
 
 function daysSince(dateStr?: string) {
@@ -61,7 +61,7 @@ function isCallOverdue(lead: Lead) {
 
 function LeadCard({ lead, onClick }: { lead: Lead; onClick: () => void }) {
   const overdue = isCallOverdue(lead)
-  const creative = lead.utm_content ? creativeMap[lead.utm_content] : null
+  const creative = findCreativeForLead(SEED_CREATIVES, lead)
   const days = daysSince(lead.last_contact_at || lead.created_at)
   const ageColor = days < 4 ? green : days < 10 ? amber : pink
 
@@ -100,7 +100,7 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
   onValueChange: (id: string, field: 'proposal_value' | 'revenue', value: number) => void
   onFieldChange: (id: string, field: string, value: string) => void
 }) {
-  const creative = lead.utm_content ? creativeMap[lead.utm_content] : null
+  const creative = findCreativeForLead(SEED_CREATIVES, lead)
   return (
     <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
       <div className="h-full w-full max-w-lg overflow-y-auto"

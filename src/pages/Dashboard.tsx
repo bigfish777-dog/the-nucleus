@@ -81,7 +81,10 @@ const upcomingCalls = leads
 
 // Placeholders — real data built in component using liveLeads
 
-const creativeMap = Object.fromEntries(SEED_CREATIVES.map(c => [c.utm_content_value, c.name]))
+const creativeMap = Object.fromEntries(SEED_CREATIVES.flatMap(c => {
+  const keys = [c.utm_content_value, c.meta_creative_id].filter(Boolean)
+  return keys.map(key => [key, c.name])
+}))
 
 type Timeframe = '4w' | '8w' | '12w'
 
