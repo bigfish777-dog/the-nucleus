@@ -130,7 +130,7 @@ export default function Dashboard() {
   // Revenue closed = ALL TIME total from closed won leads
   const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
-  const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
+  const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage)).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
   React.useEffect(() => {
     // Load ALL time ad spend for accurate cost per call
