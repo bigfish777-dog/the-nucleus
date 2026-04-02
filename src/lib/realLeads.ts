@@ -14,12 +14,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-12T19:07:58.460Z",
     booking_completed: true,
-    booked_at: "2026-01-12 07:08 pm",
+    booked_at: "2026-01-12T19:08:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-14 11:30 am",
-    created_at: "2026-01-12 07:08 pm",
-    updated_at: "2026-01-14 11:30 am",
-    call_datetime: "2026-01-14 11:30 am"
+    last_contact_at: "2026-01-14T11:30:00.000Z",
+    created_at: "2026-01-12T19:08:00.000Z",
+    updated_at: "2026-01-14T11:30:00.000Z",
+    call_datetime: "2026-01-14T11:30:00.000Z"
   },
   {
     id: "cal_2a51d79e-2461-4623-a4de-cf08ab79eb8c",
@@ -34,12 +34,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-16T12:36:06.994Z",
     booking_completed: true,
-    booked_at: "2026-01-16 12:38 pm",
+    booked_at: "2026-01-16T12:38:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-16 03:00 pm",
-    created_at: "2026-01-16 12:38 pm",
-    updated_at: "2026-01-16 03:00 pm",
-    call_datetime: "2026-01-16 03:00 pm"
+    last_contact_at: "2026-01-16T15:00:00.000Z",
+    created_at: "2026-01-16T12:38:00.000Z",
+    updated_at: "2026-01-16T15:00:00.000Z",
+    call_datetime: "2026-01-16T15:00:00.000Z"
   },
   {
     id: "cal_b98efa30-b754-4908-a296-2c569b2aa907",
@@ -54,12 +54,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-16T19:24:00.214Z",
     booking_completed: true,
-    booked_at: "2026-01-16 07:27 pm",
+    booked_at: "2026-01-16T19:27:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-20 03:00 pm",
-    created_at: "2026-01-16 07:27 pm",
-    updated_at: "2026-01-20 03:00 pm",
-    call_datetime: "2026-01-20 03:00 pm"
+    last_contact_at: "2026-01-20T15:00:00.000Z",
+    created_at: "2026-01-16T19:27:00.000Z",
+    updated_at: "2026-01-20T15:00:00.000Z",
+    call_datetime: "2026-01-20T15:00:00.000Z"
   },
   {
     id: "cal_b3f36db3-88c8-411f-95a1-e9d5bd3d3ce3",
@@ -74,12 +74,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-17T11:10:18.170Z",
     booking_completed: true,
-    booked_at: "2026-01-17 11:12 am",
+    booked_at: "2026-01-17T11:12:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-19 12:00 pm",
-    created_at: "2026-01-17 11:12 am",
-    updated_at: "2026-01-19 12:00 pm",
-    call_datetime: "2026-01-19 12:00 pm"
+    last_contact_at: "2026-01-19T12:00:00.000Z",
+    created_at: "2026-01-17T11:12:00.000Z",
+    updated_at: "2026-01-19T12:00:00.000Z",
+    call_datetime: "2026-01-19T12:00:00.000Z"
   },
   {
     id: "cal_49010526-8358-403b-8d38-257959001640",
@@ -94,12 +94,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-17T17:06:03.029Z",
     booking_completed: true,
-    booked_at: "2026-01-17 05:07 pm",
+    booked_at: "2026-01-17T17:07:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-19 02:30 pm",
-    created_at: "2026-01-17 05:07 pm",
-    updated_at: "2026-01-19 02:30 pm",
-    call_datetime: "2026-01-19 02:30 pm"
+    last_contact_at: "2026-01-19T14:30:00.000Z",
+    created_at: "2026-01-17T17:07:00.000Z",
+    updated_at: "2026-01-19T14:30:00.000Z",
+    call_datetime: "2026-01-19T14:30:00.000Z"
   },
   {
     id: "cal_6c323ca3-85e0-4592-a5c2-37c450108d96",
@@ -114,12 +114,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-03T20:46:30.019Z",
     booking_completed: true,
-    booked_at: "2026-01-19 09:43 pm",
+    booked_at: "2026-01-19T21:43:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-21 10:30 am",
-    created_at: "2026-01-19 09:43 pm",
-    updated_at: "2026-01-21 10:30 am",
-    call_datetime: "2026-01-21 10:30 am"
+    last_contact_at: "2026-01-21T10:30:00.000Z",
+    created_at: "2026-01-19T21:43:00.000Z",
+    updated_at: "2026-01-21T10:30:00.000Z",
+    call_datetime: "2026-01-21T10:30:00.000Z"
   },
   {
     id: "cal_585e7ce1-3b1e-49eb-8565-c90263c02a99",
@@ -134,12 +134,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-20T10:12:58.992Z",
     booking_completed: true,
-    booked_at: "2026-01-20 10:14 am",
+    booked_at: "2026-01-20T10:14:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-21 12:30 pm",
-    created_at: "2026-01-20 10:14 am",
-    updated_at: "2026-01-21 12:30 pm",
-    call_datetime: "2026-01-21 12:30 pm"
+    last_contact_at: "2026-01-21T12:30:00.000Z",
+    created_at: "2026-01-20T10:14:00.000Z",
+    updated_at: "2026-01-21T12:30:00.000Z",
+    call_datetime: "2026-01-21T12:30:00.000Z"
   },
   {
     id: "cal_cd3447d7-b484-4152-b8fb-6169bcff9b88",
@@ -154,12 +154,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-21T07:04:15.066Z",
     booking_completed: true,
-    booked_at: "2026-01-21 07:06 am",
+    booked_at: "2026-01-21T07:06:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-21 02:30 pm",
-    created_at: "2026-01-21 07:06 am",
-    updated_at: "2026-01-21 02:30 pm",
-    call_datetime: "2026-01-21 02:30 pm"
+    last_contact_at: "2026-01-21T14:30:00.000Z",
+    created_at: "2026-01-21T07:06:00.000Z",
+    updated_at: "2026-01-21T14:30:00.000Z",
+    call_datetime: "2026-01-21T14:30:00.000Z"
   },
   {
     id: "cal_bd9ea183-3d57-4d0a-bf68-6a87f6e66432",
@@ -174,12 +174,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-21T14:05:44.943Z",
     booking_completed: true,
-    booked_at: "2026-01-21 02:07 pm",
+    booked_at: "2026-01-21T14:07:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-22 02:00 pm",
-    created_at: "2026-01-21 02:07 pm",
-    updated_at: "2026-01-22 02:00 pm",
-    call_datetime: "2026-01-22 02:00 pm"
+    last_contact_at: "2026-01-22T14:00:00.000Z",
+    created_at: "2026-01-21T14:07:00.000Z",
+    updated_at: "2026-01-22T14:00:00.000Z",
+    call_datetime: "2026-01-22T14:00:00.000Z"
   },
   {
     id: "cal_54b9268a-052a-4751-b029-3eacaee0bae0",
@@ -194,12 +194,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-23T06:53:06.030Z",
     booking_completed: true,
-    booked_at: "2026-01-23 07:03 pm",
+    booked_at: "2026-01-23T19:03:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-26 09:00 am",
-    created_at: "2026-01-23 07:03 pm",
-    updated_at: "2026-01-26 09:00 am",
-    call_datetime: "2026-01-26 09:00 am"
+    last_contact_at: "2026-01-26T09:00:00.000Z",
+    created_at: "2026-01-23T19:03:00.000Z",
+    updated_at: "2026-01-26T09:00:00.000Z",
+    call_datetime: "2026-01-26T09:00:00.000Z"
   },
   {
     id: "cal_cb4edf73-b957-4f17-9f6f-c7429180a98d",
@@ -214,12 +214,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-25T23:00:48.070Z",
     booking_completed: true,
-    booked_at: "2026-01-26 11:39 am",
+    booked_at: "2026-01-26T11:39:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-26 04:00 pm",
-    created_at: "2026-01-26 11:39 am",
-    updated_at: "2026-01-26 04:00 pm",
-    call_datetime: "2026-01-26 04:00 pm"
+    last_contact_at: "2026-01-26T16:00:00.000Z",
+    created_at: "2026-01-26T11:39:00.000Z",
+    updated_at: "2026-01-26T16:00:00.000Z",
+    call_datetime: "2026-01-26T16:00:00.000Z"
   },
   {
     id: "cal_eccc0533-6520-443a-afba-0990319cff04",
@@ -234,12 +234,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-23T06:53:06.030Z",
     booking_completed: true,
-    booked_at: "2026-01-26 12:12 pm",
+    booked_at: "2026-01-26T12:12:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-27 11:00 am",
-    created_at: "2026-01-26 12:12 pm",
-    updated_at: "2026-01-27 11:00 am",
-    call_datetime: "2026-01-27 11:00 am"
+    last_contact_at: "2026-01-27T11:00:00.000Z",
+    created_at: "2026-01-26T12:12:00.000Z",
+    updated_at: "2026-01-27T11:00:00.000Z",
+    call_datetime: "2026-01-27T11:00:00.000Z"
   },
   {
     id: "cal_c1dbec6c-652a-46c5-b8db-9727fa7c5f1f",
@@ -254,12 +254,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-01-26T00:11:55.107Z",
     booking_completed: true,
-    booked_at: "2026-01-26 03:08 pm",
+    booked_at: "2026-01-26T15:08:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-27 02:20 pm",
-    created_at: "2026-01-26 03:08 pm",
-    updated_at: "2026-01-27 02:20 pm",
-    call_datetime: "2026-01-27 02:20 pm"
+    last_contact_at: "2026-01-27T14:20:00.000Z",
+    created_at: "2026-01-26T15:08:00.000Z",
+    updated_at: "2026-01-27T14:20:00.000Z",
+    call_datetime: "2026-01-27T14:20:00.000Z"
   },
   {
     id: "cal_1cfe900d-55ce-45a4-966f-4b688f33a88f",
@@ -274,12 +274,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-02-23T06:53:06.030Z",
     booking_completed: true,
-    booked_at: "2026-01-26 10:26 pm",
+    booked_at: "2026-01-26T22:26:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-29 01:40 pm",
-    created_at: "2026-01-26 10:26 pm",
-    updated_at: "2026-01-29 01:40 pm",
-    call_datetime: "2026-01-29 01:40 pm"
+    last_contact_at: "2026-01-29T13:40:00.000Z",
+    created_at: "2026-01-26T22:26:00.000Z",
+    updated_at: "2026-01-29T13:40:00.000Z",
+    call_datetime: "2026-01-29T13:40:00.000Z"
   },
   {
     id: "cal_f15086ba-46d3-4db2-be4f-dfffe7a62f5d",
@@ -294,12 +294,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-02-14T17:51:42.444Z",
     booking_completed: true,
-    booked_at: "2026-01-26 10:31 pm",
+    booked_at: "2026-01-26T22:31:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-30 03:40 pm",
-    created_at: "2026-01-26 10:31 pm",
-    updated_at: "2026-01-30 03:40 pm",
-    call_datetime: "2026-01-30 03:40 pm"
+    last_contact_at: "2026-01-30T15:40:00.000Z",
+    created_at: "2026-01-26T22:31:00.000Z",
+    updated_at: "2026-01-30T15:40:00.000Z",
+    call_datetime: "2026-01-30T15:40:00.000Z"
   },
   {
     id: "cal_d0a28210-d65c-477a-ae68-579efac76ec0",
@@ -314,12 +314,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-27T11:32:31.263Z",
     booking_completed: true,
-    booked_at: "2026-01-27 11:33 am",
+    booked_at: "2026-01-27T11:33:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-29 04:00 pm",
-    created_at: "2026-01-27 11:33 am",
-    updated_at: "2026-01-29 04:00 pm",
-    call_datetime: "2026-01-29 04:00 pm"
+    last_contact_at: "2026-01-29T16:00:00.000Z",
+    created_at: "2026-01-27T11:33:00.000Z",
+    updated_at: "2026-01-29T16:00:00.000Z",
+    call_datetime: "2026-01-29T16:00:00.000Z"
   },
   {
     id: "cal_2e78c7de-7e36-464b-bbab-b33d0bc4b7ea",
@@ -334,12 +334,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-01-23T17:21:08.818Z",
     booking_completed: true,
-    booked_at: "2026-01-27 02:35 pm",
+    booked_at: "2026-01-27T14:35:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-29 12:20 pm",
-    created_at: "2026-01-27 02:35 pm",
-    updated_at: "2026-01-29 12:20 pm",
-    call_datetime: "2026-01-29 12:20 pm"
+    last_contact_at: "2026-01-29T12:20:00.000Z",
+    created_at: "2026-01-27T14:35:00.000Z",
+    updated_at: "2026-01-29T12:20:00.000Z",
+    call_datetime: "2026-01-29T12:20:00.000Z"
   },
   {
     id: "cal_a83fe140-d7aa-40fc-b3f6-9be593b2f950",
@@ -354,12 +354,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-23T17:21:08.818Z",
     booking_completed: true,
-    booked_at: "2026-01-30 10:42 am",
+    booked_at: "2026-01-30T10:42:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-01-30 02:00 pm",
-    created_at: "2026-01-30 10:42 am",
-    updated_at: "2026-01-30 02:00 pm",
-    call_datetime: "2026-01-30 02:00 pm"
+    last_contact_at: "2026-01-30T14:00:00.000Z",
+    created_at: "2026-01-30T10:42:00.000Z",
+    updated_at: "2026-01-30T14:00:00.000Z",
+    call_datetime: "2026-01-30T14:00:00.000Z"
   },
   {
     id: "cal_72f9f67c-b88e-412a-b395-613597e1b119",
@@ -374,12 +374,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-31T00:19:11.284Z",
     booking_completed: true,
-    booked_at: "2026-01-31 12:19 am",
+    booked_at: "2026-01-31T00:19:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-02 04:20 pm",
-    created_at: "2026-01-31 12:19 am",
-    updated_at: "2026-02-02 04:20 pm",
-    call_datetime: "2026-02-02 04:20 pm"
+    last_contact_at: "2026-02-02T16:20:00.000Z",
+    created_at: "2026-01-31T00:19:00.000Z",
+    updated_at: "2026-02-02T16:20:00.000Z",
+    call_datetime: "2026-02-02T16:20:00.000Z"
   },
   {
     id: "cal_209da6d8-e27d-46cd-813a-4a5476b6cb6f",
@@ -394,12 +394,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-01-31T11:07:44.761Z",
     booking_completed: true,
-    booked_at: "2026-02-02 11:33 am",
+    booked_at: "2026-02-02T11:33:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-03 04:00 pm",
-    created_at: "2026-02-02 11:33 am",
-    updated_at: "2026-02-03 04:00 pm",
-    call_datetime: "2026-02-03 04:00 pm"
+    last_contact_at: "2026-02-03T16:00:00.000Z",
+    created_at: "2026-02-02T11:33:00.000Z",
+    updated_at: "2026-02-03T16:00:00.000Z",
+    call_datetime: "2026-02-03T16:00:00.000Z"
   },
   {
     id: "cal_51dc75df-5472-43e1-ab67-9336c5824350",
@@ -414,12 +414,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-05T21:07:41.146Z",
     booking_completed: true,
-    booked_at: "2026-02-02 10:25 pm",
+    booked_at: "2026-02-02T22:25:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-06 04:20 pm",
-    created_at: "2026-02-02 10:25 pm",
-    updated_at: "2026-02-06 04:20 pm",
-    call_datetime: "2026-02-06 04:20 pm"
+    last_contact_at: "2026-02-06T16:20:00.000Z",
+    created_at: "2026-02-02T22:25:00.000Z",
+    updated_at: "2026-02-06T16:20:00.000Z",
+    call_datetime: "2026-02-06T16:20:00.000Z"
   },
   {
     id: "cal_4e086d13-4de9-4edd-99a5-249999030929",
@@ -434,12 +434,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-04T23:56:49.404Z",
     booking_completed: true,
-    booked_at: "2026-02-04 11:58 pm",
+    booked_at: "2026-02-04T23:58:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-09 04:00 pm",
-    created_at: "2026-02-04 11:58 pm",
-    updated_at: "2026-02-09 04:00 pm",
-    call_datetime: "2026-02-09 04:00 pm"
+    last_contact_at: "2026-02-09T16:00:00.000Z",
+    created_at: "2026-02-04T23:58:00.000Z",
+    updated_at: "2026-02-09T16:00:00.000Z",
+    call_datetime: "2026-02-09T16:00:00.000Z"
   },
   {
     id: "cal_1a59041e-7b99-476a-bbfd-fedb76fb6977",
@@ -454,12 +454,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-05T21:07:41.146Z",
     booking_completed: true,
-    booked_at: "2026-02-05 09:09 pm",
+    booked_at: "2026-02-05T21:09:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-06 12:00 pm",
-    created_at: "2026-02-05 09:09 pm",
-    updated_at: "2026-02-06 12:00 pm",
-    call_datetime: "2026-02-06 12:00 pm"
+    last_contact_at: "2026-02-06T12:00:00.000Z",
+    created_at: "2026-02-05T21:09:00.000Z",
+    updated_at: "2026-02-06T12:00:00.000Z",
+    call_datetime: "2026-02-06T12:00:00.000Z"
   },
   {
     id: "cal_d938da28-f25b-4f2f-b1f0-aaaf583d22cc",
@@ -474,12 +474,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-07T11:08:45.369Z",
     booking_completed: true,
-    booked_at: "2026-02-07 11:20 am",
+    booked_at: "2026-02-07T11:20:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-10 10:40 am",
-    created_at: "2026-02-07 11:20 am",
-    updated_at: "2026-02-10 10:40 am",
-    call_datetime: "2026-02-10 10:40 am"
+    last_contact_at: "2026-02-10T10:40:00.000Z",
+    created_at: "2026-02-07T11:20:00.000Z",
+    updated_at: "2026-02-10T10:40:00.000Z",
+    call_datetime: "2026-02-10T10:40:00.000Z"
   },
   {
     id: "cal_f7255b3c-7b32-48ce-bf04-43e788f51df1",
@@ -494,12 +494,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-09T18:49:16.200Z",
     booking_completed: true,
-    booked_at: "2026-02-09 06:50 pm",
+    booked_at: "2026-02-09T18:50:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-10 02:00 pm",
-    created_at: "2026-02-09 06:50 pm",
-    updated_at: "2026-02-10 02:00 pm",
-    call_datetime: "2026-02-10 02:00 pm"
+    last_contact_at: "2026-02-10T14:00:00.000Z",
+    created_at: "2026-02-09T18:50:00.000Z",
+    updated_at: "2026-02-10T14:00:00.000Z",
+    call_datetime: "2026-02-10T14:00:00.000Z"
   },
   {
     id: "cal_22716d51-b6c7-4d80-b40b-86b5fbd6f847",
@@ -514,12 +514,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-10T18:08:02.711Z",
     booking_completed: true,
-    booked_at: "2026-02-10 06:10 pm",
+    booked_at: "2026-02-10T18:10:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-16 02:20 pm",
-    created_at: "2026-02-10 06:10 pm",
-    updated_at: "2026-02-16 02:20 pm",
-    call_datetime: "2026-02-16 02:20 pm"
+    last_contact_at: "2026-02-16T14:20:00.000Z",
+    created_at: "2026-02-10T18:10:00.000Z",
+    updated_at: "2026-02-16T14:20:00.000Z",
+    call_datetime: "2026-02-16T14:20:00.000Z"
   },
   {
     id: "cal_7c1a3315-b651-464b-aec2-1d5cb480d017",
@@ -534,12 +534,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-14T17:51:42.444Z",
     booking_completed: true,
-    booked_at: "2026-02-11 08:50 am",
+    booked_at: "2026-02-11T08:50:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-12 11:00 am",
-    created_at: "2026-02-11 08:50 am",
-    updated_at: "2026-02-12 11:00 am",
-    call_datetime: "2026-02-12 11:00 am"
+    last_contact_at: "2026-02-12T11:00:00.000Z",
+    created_at: "2026-02-11T08:50:00.000Z",
+    updated_at: "2026-02-12T11:00:00.000Z",
+    call_datetime: "2026-02-12T11:00:00.000Z"
   },
   {
     id: "cal_1d4319d0-ba97-4fc3-abce-461104096e80",
@@ -554,12 +554,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-11T19:54:14.859Z",
     booking_completed: true,
-    booked_at: "2026-02-11 07:57 pm",
+    booked_at: "2026-02-11T19:57:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-12 02:00 pm",
-    created_at: "2026-02-11 07:57 pm",
-    updated_at: "2026-02-12 02:00 pm",
-    call_datetime: "2026-02-12 02:00 pm"
+    last_contact_at: "2026-02-12T14:00:00.000Z",
+    created_at: "2026-02-11T19:57:00.000Z",
+    updated_at: "2026-02-12T14:00:00.000Z",
+    call_datetime: "2026-02-12T14:00:00.000Z"
   },
   {
     id: "cal_9bf3317e-de27-42fe-a7ca-c94636fab4ad",
@@ -574,12 +574,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-22T09:05:19.510Z",
     booking_completed: true,
-    booked_at: "2026-02-22 09:08 am",
+    booked_at: "2026-02-22T09:08:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-26 03:20 pm",
-    created_at: "2026-02-22 09:08 am",
-    updated_at: "2026-02-26 03:20 pm",
-    call_datetime: "2026-02-26 03:20 pm"
+    last_contact_at: "2026-02-26T15:20:00.000Z",
+    created_at: "2026-02-22T09:08:00.000Z",
+    updated_at: "2026-02-26T15:20:00.000Z",
+    call_datetime: "2026-02-26T15:20:00.000Z"
   },
   {
     id: "cal_746dddf7-ec8f-4b79-b976-71d497b72e0b",
@@ -594,12 +594,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-23T06:53:06.030Z",
     booking_completed: true,
-    booked_at: "2026-02-23 06:54 am",
+    booked_at: "2026-02-23T06:54:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-23 04:20 pm",
-    created_at: "2026-02-23 06:54 am",
-    updated_at: "2026-02-23 04:20 pm",
-    call_datetime: "2026-02-23 04:20 pm"
+    last_contact_at: "2026-02-23T16:20:00.000Z",
+    created_at: "2026-02-23T06:54:00.000Z",
+    updated_at: "2026-02-23T16:20:00.000Z",
+    call_datetime: "2026-02-23T16:20:00.000Z"
   },
   {
     id: "cal_7d33277b-f6c0-4a4d-90c3-a668c950c326",
@@ -614,12 +614,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-18T13:00:07.904Z",
     booking_completed: true,
-    booked_at: "2026-02-23 11:41 am",
+    booked_at: "2026-02-23T11:41:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-23 02:20 pm",
-    created_at: "2026-02-23 11:41 am",
-    updated_at: "2026-02-23 02:20 pm",
-    call_datetime: "2026-02-23 02:20 pm"
+    last_contact_at: "2026-02-23T14:20:00.000Z",
+    created_at: "2026-02-23T11:41:00.000Z",
+    updated_at: "2026-02-23T14:20:00.000Z",
+    call_datetime: "2026-02-23T14:20:00.000Z"
   },
   {
     id: "cal_7cd2a779-8303-49a2-aff5-5af5ba1f7ead",
@@ -634,12 +634,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-24T17:53:01.399Z",
     booking_completed: true,
-    booked_at: "2026-02-24 05:52 pm",
+    booked_at: "2026-02-24T17:52:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-25 04:20 pm",
-    created_at: "2026-02-24 05:52 pm",
-    updated_at: "2026-02-25 04:20 pm",
-    call_datetime: "2026-02-25 04:20 pm"
+    last_contact_at: "2026-02-25T16:20:00.000Z",
+    created_at: "2026-02-24T17:52:00.000Z",
+    updated_at: "2026-02-25T16:20:00.000Z",
+    call_datetime: "2026-02-25T16:20:00.000Z"
   },
   {
     id: "cal_4451ae93-790d-4000-a314-177eaa4fe0f3",
@@ -652,14 +652,14 @@ export const REAL_LEADS: Lead[] = [
     industry: "optineck.com",
     revenue_range: "Course Creator / Educator Product",
     stage: "showed",
-    opted_in_at: "2026-02-24 06:34 pm",
+    opted_in_at: "2026-02-24T18:34:00.000Z",
     booking_completed: true,
-    booked_at: "2026-02-24 06:34 pm",
+    booked_at: "2026-02-24T18:34:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-03 11:40 am",
-    created_at: "2026-02-24 06:34 pm",
-    updated_at: "2026-03-03 11:40 am",
-    call_datetime: "2026-03-03 11:40 am"
+    last_contact_at: "2026-03-03T11:40:00.000Z",
+    created_at: "2026-02-24T18:34:00.000Z",
+    updated_at: "2026-03-03T11:40:00.000Z",
+    call_datetime: "2026-03-03T11:40:00.000Z"
   },
   {
     id: "cal_351bd723-9e54-4285-9d1f-fd8294e64fe8",
@@ -674,12 +674,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-02-24T21:11:26.710Z",
     booking_completed: true,
-    booked_at: "2026-02-24 09:14 pm",
+    booked_at: "2026-02-24T21:14:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-26 04:20 pm",
-    created_at: "2026-02-24 09:14 pm",
-    updated_at: "2026-02-26 04:20 pm",
-    call_datetime: "2026-02-26 04:20 pm"
+    last_contact_at: "2026-02-26T16:20:00.000Z",
+    created_at: "2026-02-24T21:14:00.000Z",
+    updated_at: "2026-02-26T16:20:00.000Z",
+    call_datetime: "2026-02-26T16:20:00.000Z"
   },
   {
     id: "cal_c1b36244-ff16-41b3-8b59-cfb1611d1bd9",
@@ -694,12 +694,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-02-26T14:05:08.772Z",
     booking_completed: true,
-    booked_at: "2026-02-27 01:42 pm",
+    booked_at: "2026-02-27T13:42:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-02-27 04:00 pm",
-    created_at: "2026-02-27 01:42 pm",
-    updated_at: "2026-02-27 04:00 pm",
-    call_datetime: "2026-02-27 04:00 pm"
+    last_contact_at: "2026-02-27T16:00:00.000Z",
+    created_at: "2026-02-27T13:42:00.000Z",
+    updated_at: "2026-02-27T16:00:00.000Z",
+    call_datetime: "2026-02-27T16:00:00.000Z"
   },
   {
     id: "cal_ce5b7d89-1db6-4f73-90e9-d5fa68ec2ce7",
@@ -714,12 +714,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-02T20:05:12.602Z",
     booking_completed: true,
-    booked_at: "2026-03-02 08:07 pm",
+    booked_at: "2026-03-02T20:07:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-05 10:00 am",
-    created_at: "2026-03-02 08:07 pm",
-    updated_at: "2026-03-05 10:00 am",
-    call_datetime: "2026-03-05 10:00 am"
+    last_contact_at: "2026-03-05T10:00:00.000Z",
+    created_at: "2026-03-02T20:07:00.000Z",
+    updated_at: "2026-03-05T10:00:00.000Z",
+    call_datetime: "2026-03-05T10:00:00.000Z"
   },
   {
     id: "cal_179ad3b7-fddf-4b7a-b8aa-12181b91b0f4",
@@ -734,12 +734,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-05T20:38:17.792Z",
     booking_completed: true,
-    booked_at: "2026-03-05 08:39 pm",
+    booked_at: "2026-03-05T20:39:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-13 11:00 am",
-    created_at: "2026-03-05 08:39 pm",
-    updated_at: "2026-03-13 11:00 am",
-    call_datetime: "2026-03-13 11:00 am"
+    last_contact_at: "2026-03-13T11:00:00.000Z",
+    created_at: "2026-03-05T20:39:00.000Z",
+    updated_at: "2026-03-13T11:00:00.000Z",
+    call_datetime: "2026-03-13T11:00:00.000Z"
   },
   {
     id: "cal_ee91f668-ff52-4ef7-91fc-b8cb77cf01bd",
@@ -754,12 +754,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-06T14:17:39.566Z",
     booking_completed: true,
-    booked_at: "2026-03-06 02:18 pm",
+    booked_at: "2026-03-06T14:18:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-09 12:00 pm",
-    created_at: "2026-03-06 02:18 pm",
-    updated_at: "2026-03-09 12:00 pm",
-    call_datetime: "2026-03-09 12:00 pm"
+    last_contact_at: "2026-03-09T12:00:00.000Z",
+    created_at: "2026-03-06T14:18:00.000Z",
+    updated_at: "2026-03-09T12:00:00.000Z",
+    call_datetime: "2026-03-09T12:00:00.000Z"
   },
   {
     id: "cal_f651f766-1a79-48ed-a9e1-531eca46f92c",
@@ -774,12 +774,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-10T17:27:10.069Z",
     booking_completed: true,
-    booked_at: "2026-03-10 05:29 pm",
+    booked_at: "2026-03-10T17:29:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-13 12:00 pm",
-    created_at: "2026-03-10 05:29 pm",
-    updated_at: "2026-03-13 12:00 pm",
-    call_datetime: "2026-03-13 12:00 pm"
+    last_contact_at: "2026-03-13T12:00:00.000Z",
+    created_at: "2026-03-10T17:29:00.000Z",
+    updated_at: "2026-03-13T12:00:00.000Z",
+    call_datetime: "2026-03-13T12:00:00.000Z"
   },
   {
     id: "cal_72568cc8-fc19-4f98-931c-edf8a0a42afb",
@@ -794,12 +794,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-03-12T15:54:26.877Z",
     booking_completed: true,
-    booked_at: "2026-03-12 03:59 pm",
+    booked_at: "2026-03-12T15:59:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-17 04:20 pm",
-    created_at: "2026-03-12 03:59 pm",
-    updated_at: "2026-03-17 04:20 pm",
-    call_datetime: "2026-03-17 04:20 pm"
+    last_contact_at: "2026-03-17T16:20:00.000Z",
+    created_at: "2026-03-12T15:59:00.000Z",
+    updated_at: "2026-03-17T16:20:00.000Z",
+    call_datetime: "2026-03-17T16:20:00.000Z"
   },
   {
     id: "cal_67e7e97e-82ad-43af-a30a-026d07165d1a",
@@ -814,12 +814,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-13T02:40:36.262Z",
     booking_completed: true,
-    booked_at: "2026-03-13 02:40 am",
+    booked_at: "2026-03-13T02:40:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-13 03:20 pm",
-    created_at: "2026-03-13 02:40 am",
-    updated_at: "2026-03-13 03:20 pm",
-    call_datetime: "2026-03-13 03:20 pm"
+    last_contact_at: "2026-03-13T15:20:00.000Z",
+    created_at: "2026-03-13T02:40:00.000Z",
+    updated_at: "2026-03-13T15:20:00.000Z",
+    call_datetime: "2026-03-13T15:20:00.000Z"
   },
   {
     id: "cal_9972ee3f-1242-4a4b-afb9-3d27c0fa2a96",
@@ -834,12 +834,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "no_show",
     opted_in_at: "2026-03-13T23:07:38.121Z",
     booking_completed: true,
-    booked_at: "2026-03-13 11:07 pm",
+    booked_at: "2026-03-13T23:07:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-19 10:00 am",
-    created_at: "2026-03-13 11:07 pm",
-    updated_at: "2026-03-19 10:00 am",
-    call_datetime: "2026-03-19 10:00 am"
+    last_contact_at: "2026-03-19T10:00:00.000Z",
+    created_at: "2026-03-13T23:07:00.000Z",
+    updated_at: "2026-03-19T10:00:00.000Z",
+    call_datetime: "2026-03-19T10:00:00.000Z"
   },
   {
     id: "cal_1e4719d4-9b96-4fc0-9e0b-50c99f1afff6",
@@ -854,12 +854,12 @@ export const REAL_LEADS: Lead[] = [
     stage: "showed",
     opted_in_at: "2026-03-16T07:26:04.730Z",
     booking_completed: true,
-    booked_at: "2026-03-16 07:28 am",
+    booked_at: "2026-03-16T07:28:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-17 03:00 pm",
-    created_at: "2026-03-16 07:28 am",
-    updated_at: "2026-03-17 03:00 pm",
-    call_datetime: "2026-03-17 03:00 pm"
+    last_contact_at: "2026-03-17T15:00:00.000Z",
+    created_at: "2026-03-16T07:28:00.000Z",
+    updated_at: "2026-03-17T15:00:00.000Z",
+    call_datetime: "2026-03-17T15:00:00.000Z"
   },
   {
     id: "cal_987c7f83-a60c-45e7-b710-781ed23e69e8",
@@ -872,14 +872,14 @@ export const REAL_LEADS: Lead[] = [
     industry: "www.bricksmcgee.com",
     revenue_range: "Agency / Service Provider",
     stage: "showed",
-    opted_in_at: "2026-03-16 07:40 pm",
+    opted_in_at: "2026-03-16T19:40:00.000Z",
     booking_completed: true,
-    booked_at: "2026-03-16 07:40 pm",
+    booked_at: "2026-03-16T19:40:00.000Z",
     proposal_sent: false,
-    last_contact_at: "2026-03-17 01:00 pm",
-    created_at: "2026-03-16 07:40 pm",
-    updated_at: "2026-03-17 01:00 pm",
-    call_datetime: "2026-03-17 01:00 pm"
+    last_contact_at: "2026-03-17T13:00:00.000Z",
+    created_at: "2026-03-16T19:40:00.000Z",
+    updated_at: "2026-03-17T13:00:00.000Z",
+    call_datetime: "2026-03-17T13:00:00.000Z"
   },
   {
     id: "per_69c10385dee4fff7606519af",

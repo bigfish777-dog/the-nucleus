@@ -1,5 +1,6 @@
 export type PipelineStage =
   | 'booked'
+  | 'showed'                 // attended 1st call, not yet qualified/progressed
   | 'cancelled'
   | 'no_show'
   | 'disqualified'

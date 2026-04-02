@@ -36,9 +36,9 @@ export default function AdPerformance() {
     const ctr = impressions ? (clicks / impressions) * 100 : 0
     const creativeLeads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l))
     const leads = creativeLeads.length
-    const showed = creativeLeads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
-    const qualified = creativeLeads.filter(l => ['qualified','second_call_booked','proposal_sent','closed_won'].includes(l.stage)).length
-    const proposals = creativeLeads.filter(l => ['proposal_sent','closed_won'].includes(l.stage)).length
+    const showed = creativeLeads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
+    const qualified = creativeLeads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
+    const proposals = creativeLeads.filter(l => ['proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
     const closes = creativeLeads.filter(l => l.stage === 'closed_won').length
     const revenue = creativeLeads.reduce((s, l) => s + (l.revenue || 0), 0)
     const cpl = leads ? spend / leads : 0
