@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { REAL_LEADS as SEED_LEADS, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import type { Lead, PipelineStage } from '../types'
 import { updateLeadStage } from '../lib/supabase'
-import { X, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react'
+import { X, AlertCircle, Clock, Eye, EyeOff, Plus } from 'lucide-react'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'
@@ -282,12 +282,198 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
   )
 }
 
+// ── Add Lead Modal ────────────────────────────────────────────────────────────
+
+const INDUSTRY_OPTIONS = [
+  'Agency / Service Provider',
+  'Coach / Mentor',
+  'Consulting',
+  'Course Creator / Educator',
+  'E-commerce',
+  'Hospitality',
+  'Professional Services',
+  'Recruitment',
+  'SaaS / Tech',
+  'Other',
+]
+
+const REVENUE_OPTIONS = [
+  'Less than £500k',
+  '£500k - £1m',
+  '£1m - £2m',
+  '£2m+',
+]
+
+interface AddLeadForm {
+  name: string
+  email: string
+  phone: string
+  call_datetime: string
+  utm_content: string
+  industry: string
+  revenue_range: string
+  source_note: string
+}
+
+function AddLeadModal({ onClose, onCreated }: { onClose: () => void; onCreated: (lead: Lead) => void }) {
+  const [form, setForm] = useState<AddLeadForm>({
+    name: '', email: '', phone: '', call_datetime: '', utm_content: '', industry: '', revenue_range: '', source_note: '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const set = (k: keyof AddLeadForm, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const handleSubmit = async () => {
+    if (!form.name.trim()) { setError('Name is required'); return }
+    if (!form.email.trim()) { setError('Email is required'); return }
+    if (!form.call_datetime) { setError('Call date/time is required'); return }
+    setError('')
+    setSaving(true)
+
+    const now = new Date().toISOString()
+    const callDt = new Date(form.call_datetime).toISOString()
+
+    const newLead: Omit<Lead, 'id'> = {
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone.trim(),
+      utm_source: 'manual',
+      utm_medium: 'manual',
+      utm_content: form.utm_content || undefined,
+      industry: form.industry || undefined,
+      revenue_range: form.revenue_range || undefined,
+      stage: 'booked' as PipelineStage,
+      opted_in_at: now,
+      booking_completed: true,
+      booked_at: now,
+      proposal_sent: false,
+      call_datetime: callDt,
+      last_contact_at: now,
+      created_at: now,
+      updated_at: now,
+    }
+
+    try {
+      const { supabase } = await import('../lib/supabase')
+      const { data, error: dbErr } = await supabase
+        .from('leads')
+        .insert(newLead)
+        .select()
+        .single()
+
+      if (dbErr) throw dbErr
+
+      onCreated(data as Lead)
+      onClose()
+    } catch (err: unknown) {
+      // Fall back to local-only if Supabase fails
+      const localLead: Lead = { ...newLead, id: `manual_${Date.now()}` } as Lead
+      onCreated(localLead)
+      onClose()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputStyle = { width: '100%', padding: '8px 12px', background: surface, border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: muted, marginBottom: 6 }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl overflow-hidden" style={{ background: '#111827', border: `1px solid ${border}` }} onClick={e => e.stopPropagation()}>
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: `1px solid ${border}` }}>
+          <div>
+            <h2 className="text-base font-bold" style={{ color: '#F0F2F8' }}>Add Lead Manually</h2>
+            <p className="text-xs mt-0.5" style={{ color: muted }}>For leads that come in outside Calendly</p>
+          </div>
+          <button onClick={onClose} style={{ color: muted }}><X size={16} /></button>
+        </div>
+
+        {/* Form */}
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {/* Name + Email */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>Name <span style={{ color: pink }}>*</span></label>
+              <input style={inputStyle} placeholder="Full name" value={form.name} onChange={e => set('name', e.target.value)} />
+            </div>
+            <div>
+              <label style={labelStyle}>Email <span style={{ color: pink }}>*</span></label>
+              <input style={inputStyle} type="email" placeholder="email@company.com" value={form.email} onChange={e => set('email', e.target.value)} />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div>
+            <label style={labelStyle}>Phone</label>
+            <input style={inputStyle} type="tel" placeholder="+44 7700 000000" value={form.phone} onChange={e => set('phone', e.target.value)} />
+          </div>
+
+          {/* Call date/time */}
+          <div>
+            <label style={labelStyle}>Call scheduled <span style={{ color: pink }}>*</span></label>
+            <input style={inputStyle} type="datetime-local" value={form.call_datetime} onChange={e => set('call_datetime', e.target.value)} />
+          </div>
+
+          {/* Creative source */}
+          <div>
+            <label style={labelStyle}>Ad creative / source</label>
+            <select style={inputStyle} value={form.utm_content} onChange={e => set('utm_content', e.target.value)}>
+              <option value="">— Unknown / not from ad —</option>
+              {SEED_CREATIVES.map(c => (
+                <option key={c.id} value={c.utm_content_value}>{c.name}</option>
+              ))}
+              <option value="referral">Referral</option>
+              <option value="organic">Organic / Direct</option>
+            </select>
+          </div>
+
+          {/* Industry + Revenue */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label style={labelStyle}>Business type</label>
+              <select style={inputStyle} value={form.industry} onChange={e => set('industry', e.target.value)}>
+                <option value="">— Select —</option>
+                {INDUSTRY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Annual revenue</label>
+              <select style={inputStyle} value={form.revenue_range} onChange={e => set('revenue_range', e.target.value)}>
+                <option value="">— Select —</option>
+                {REVENUE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+          </div>
+
+          {error && <p className="text-xs font-semibold" style={{ color: pink }}>{error}</p>}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: `1px solid ${border}` }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>
+            Cancel
+          </button>
+          <button onClick={handleSubmit} disabled={saving}
+            className="px-4 py-2 rounded-lg text-sm font-bold"
+            style={{ background: saving ? 'rgba(255,13,100,0.4)' : pink, color: '#fff', opacity: saving ? 0.7 : 1 }}>
+            {saving ? 'Adding…' : 'Add Lead'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Pipeline() {
   const [leads, setLeads] = useState<Lead[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<Lead | null>(null)
   const [showArchive, setShowArchive] = useState(false)
   const [search, setSearch] = useState('')
+  const [showAddLead, setShowAddLead] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -386,6 +572,12 @@ export default function Pipeline() {
           {showArchive ? <EyeOff size={12}/> : <Eye size={12}/>}
           Archive ({archiveLeads.length})
         </button>
+        <button onClick={() => setShowAddLead(true)}
+          className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg"
+          style={{ background: pink, color: '#fff' }}>
+          <Plus size={12} />
+          Add Lead
+        </button>
       </div>
 
       {loading && <div className="flex items-center justify-center py-20"><div className="text-sm" style={{ color: muted }}>Loading from database...</div></div>}
@@ -474,6 +666,12 @@ export default function Pipeline() {
       )}
 
       {selected && <LeadDetail lead={selected} onClose={() => setSelected(null)} onStageChange={updateStage} onValueChange={updateValue} onFieldChange={updateField} />}
+      {showAddLead && (
+        <AddLeadModal
+          onClose={() => setShowAddLead(false)}
+          onCreated={lead => setLeads(prev => [lead, ...prev])}
+        />
+      )}
     </div>
   )
 }
