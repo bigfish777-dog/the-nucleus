@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Kanban, BarChart2, Film, Settings, Menu, X, Funnel } from 'lucide-react'
+import { LayoutDashboard, Kanban, BarChart2, Film, Settings, Menu, X, Funnel, FileText } from 'lucide-react'
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -8,6 +8,7 @@ const nav = [
   { to: '/ads', icon: BarChart2, label: 'Ad Performance' },
   { to: '/creatives', icon: Film, label: 'Creative Library' },
   { to: '/tracking', icon: Funnel, label: 'Tracking' },
+  { to: '/proposals', icon: FileText, label: 'Proposals' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
 
