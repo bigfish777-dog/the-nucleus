@@ -8,6 +8,7 @@ SCRIPT_DIR="/data/.openclaw/workspace/the-nucleus/automations"
 (crontab -l 2>/dev/null; echo "# The Nucleus automations
 0 7 * * 1 $PYTHON $SCRIPT_DIR/mailer.py weekly_report >> $SCRIPT_DIR/mailer.log 2>&1
 0 8,12,16 * * * $PYTHON $SCRIPT_DIR/mailer.py reminders >> $SCRIPT_DIR/mailer.log 2>&1
+*/5 * * * * $PYTHON $SCRIPT_DIR/mailer.py process_whatsapp_queue >> $SCRIPT_DIR/mailer.log 2>&1
 ") | crontab -
 
 echo "Cron jobs installed:"

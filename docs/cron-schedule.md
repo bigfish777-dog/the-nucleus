@@ -7,6 +7,7 @@ If migrating to a machine with cron, use:
 0 8 * * *   cd /path/to/the-nucleus && python3 automations/mailer.py reminders
 0 12 * * *  cd /path/to/the-nucleus && python3 automations/mailer.py reminders
 0 16 * * *  cd /path/to/the-nucleus && python3 automations/mailer.py reminders
+*/5 * * * *  cd /path/to/the-nucleus && python3 automations/mailer.py process_whatsapp_queue
 0 8 * * 1   cd /path/to/the-nucleus && python3 automations/mailer.py weekly_report
 0 8 * * *   python3 automations/phase6.py meta_pull
 0 */2 * * * python3 automations/phase6.py fireflies

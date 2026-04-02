@@ -195,6 +195,17 @@ def fmt_dt(dt_str):
 def queue_whatsapp_confirmation(lead):
     if not lead.get('phone'):
         return False
+    normalized_phone = format_phone_uk(lead.get('phone'))
+    if not normalized_phone:
+        return False
+    try:
+        existing = sb_get(f"whatsapp_queue?lead_id=eq.{lead['id']}&kind=eq.confirmation&phone=eq.{normalized_phone}&status=in.(pending,sent)&select=id,status,created_at&order=created_at.desc&limit=1")
+        if existing:
+            print(f"  WhatsApp already queued/sent for {normalized_phone} ({existing[0]['status']})")
+            return False
+    except Exception as e:
+        print(f"  WhatsApp dedupe lookup failed: {e}")
+
     name_first = lead['name'].split()[0] if lead.get('name') else "there"
     call_time = fmt_dt(lead.get('call_datetime'))
     msg_tpl = get_template('whatsapp_confirmation')
@@ -204,7 +215,7 @@ def queue_whatsapp_confirmation(lead):
         "lead_id": lead['id'],
         "kind": "confirmation",
         "message": message,
-        "phone": format_phone_uk(lead.get('phone')),
+        "phone": normalized_phone,
         "send_after": send_after.isoformat(),
         "status": "pending",
     }
