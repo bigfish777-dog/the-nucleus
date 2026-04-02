@@ -43,7 +43,7 @@ function dateKey(date: Date) {
 
 function fmtPct(numerator: number, denominator: number) {
   if (!denominator) return '0%'
-  return `${Math.round((numerator / denominator) * 100)}%`
+  return `${((numerator / denominator) * 100).toFixed(1)}%`
 }
 
 export default function Tracking() {
