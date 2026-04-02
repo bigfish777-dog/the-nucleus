@@ -126,9 +126,12 @@ export default function Dashboard() {
   const firstOfMonth = new Date(realNow.getFullYear(), realNow.getMonth(), 1).toISOString()
   // Use last_contact_at as close date (stored there to avoid auto-update trigger overwriting)
   const liveRevThisMonthRaw = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
-  // Exclude Michael O'Reilly (referral) from ad-attributed revenue on ROAS calc
-  // Revenue closed = ALL TIME total from closed won leads
-  const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // Revenue this quarter
+  const currentQuarter = Math.floor(realNow.getMonth() / 3)
+  const firstOfQuarter = new Date(realNow.getFullYear(), currentQuarter * 3, 1).toISOString()
+  const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfQuarter).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // All-time revenue (for ROAS and total closed card)
+  const liveRevAllTimeRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
   // Currently awaiting decision (for "Live proposals" card)
   const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage)).length
@@ -154,12 +157,13 @@ export default function Dashboard() {
   const liveShowRate = liveShowRateRaw
   const liveRevThisMonth = liveRevThisMonthRaw
   const liveRevQ = liveRevQRaw
+  const liveRevAllTime = liveRevAllTimeRaw
   const liveProposalsSent = liveProposalsSentRaw
   const liveClosedWon = liveClosedWonRaw
-  const liveTotalRevenueClosed = liveRevQRaw
+  const liveTotalRevenueClosed = liveRevAllTimeRaw
   const liveCostPerCall = liveCostPerCallRaw
   const liveCostPerProposal = liveTotalProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveTotalProposalsSent) : 0
-  const liveROAS = liveSpend28d && liveRevQ ? (liveRevQ / liveSpend28d).toFixed(1) : null
+  const liveROAS = liveSpend28d && liveRevAllTime ? (liveRevAllTime / liveSpend28d).toFixed(1) : null
   // Live flags from Supabase data
   const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < realNow)
   const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (realNow.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
@@ -273,7 +277,7 @@ export default function Dashboard() {
         <MetricCard label="Total revenue closed" value={`£${liveTotalRevenueClosed.toLocaleString()}`}
           sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
         <MetricCard label="Return on ad spend" value={liveROAS ? `${liveROAS}x` : '—'}
-          sub={liveROAS ? `£${liveRevQ.toLocaleString()} revenue · £${Math.round(liveSpend28d).toLocaleString()} spend` : 'Awaiting spend data'} color={teal} />
+          sub={liveROAS ? `£${liveRevAllTime.toLocaleString()} revenue · £${Math.round(liveSpend28d).toLocaleString()} spend` : 'Awaiting spend data'} color={teal} />
       </div>
 
       {/* ── Timeframe selector ── */}
