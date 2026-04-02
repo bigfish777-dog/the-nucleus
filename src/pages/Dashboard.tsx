@@ -46,7 +46,6 @@ function MetricCard({ label, value, sub, trend, color = '#F0F2F8' }: {
 
 // ─── Computed metrics ───────────────────────────────────────────────────────
 const leads = SEED_LEADS
-const now = new Date('2026-03-22')
 // These seed-level constants are superseded by live calendar-week calculations in the component
 const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
 const allBooked = leads.filter(l => l.booking_completed).length
