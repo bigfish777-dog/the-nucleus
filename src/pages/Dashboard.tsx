@@ -132,6 +132,7 @@ export default function Dashboard() {
   const liveTotalLeads = activeLeadsData.length
   // Currently awaiting decision (for "Live proposals" card)
   const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage)).length
+  const liveProposalsTotalValue = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage) && Number(l.proposal_value) > 0).reduce((s: number, l: Lead) => s + Number(l.proposal_value), 0)
   // Total ever sent (for funnel conversion rates and cost per proposal)
   const liveTotalProposalsSent = activeLeadsData.filter((l: Lead) =>
     ['proposal_sent', 'proposal_live', 'closed_won', 'closed_lost'].includes(l.stage) && Number(l.proposal_value) > 0
@@ -262,7 +263,7 @@ export default function Dashboard() {
           sub={`${liveAllBookedDisplay} calls booked total`}
           trend={showRate >= 70 ? 'up' : 'down'} />
         <MetricCard label="Live proposals" value={String(liveProposalsSent)}
-          sub="Awaiting decision" color={amber} />
+          sub={liveProposalsTotalValue > 0 ? `£${liveProposalsTotalValue.toLocaleString()} total value` : 'Awaiting decision'} color={amber} />
         <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
         <MetricCard label="Cost per call (all time)" value={`£${liveCostPerCall}`}
