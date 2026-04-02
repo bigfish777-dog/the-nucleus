@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { SEED_LEADS, REAL_AD_PERFORMANCE as SEED_AD_PERFORMANCE, REAL_CREATIVES as SEED_CREATIVES } from '../lib/seed'
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { isLeadInNewFunnel } from '../lib/cutover'
+import type { Lead } from '../types'
 
 const pink = '#FF0D64'; const teal = '#3FEACE'; const amber = '#FFA71A'
 const muted = '#8891A8'; const border = 'rgba(255,255,255,0.08)'; const surface = '#161B27'; const green = '#22C55E'
@@ -26,26 +27,46 @@ export default function AdPerformance() {
   const [sortBy, setSortBy] = useState<SortKey>('spend')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [allLeads, setLeads] = useState<Lead[]>(SEED_LEADS as Lead[])
+  const [adPerf, setAdPerf] = useState(SEED_AD_PERFORMANCE)
+  const [creatives, setCreatives] = useState(SEED_CREATIVES)
   const navigate = useNavigate()
 
-  const rows = SEED_CREATIVES.map(creative => {
-    const perf = SEED_AD_PERFORMANCE.filter(p => p.creative_id === creative.id)
+  useEffect(() => {
+    async function load() {
+      try {
+        const { supabase } = await import('../lib/supabase')
+        const [leadsRes, perfRes, creativesRes] = await Promise.all([
+          supabase.from('leads').select('*'),
+          supabase.from('ad_performance_daily').select('*'),
+          supabase.from('ad_creatives').select('*'),
+        ])
+        if (leadsRes.data && leadsRes.data.length > 0) setLeads(leadsRes.data as Lead[])
+        if (perfRes.data && perfRes.data.length > 0) setAdPerf(perfRes.data as typeof SEED_AD_PERFORMANCE)
+        if (creativesRes.data && creativesRes.data.length > 0) setCreatives(creativesRes.data as typeof SEED_CREATIVES)
+      } catch { /* fall back to seed */ }
+    }
+    load()
+  }, [])
+
+  const rows = creatives.map(creative => {
+    const perf = adPerf.filter(p => p.creative_id === creative.id)
     const spend = perf.reduce((s, p) => s + p.spend, 0)
-    const impressions = perf.reduce((s, p) => s + p.impressions, 0)
-    const clicks = perf.reduce((s, p) => s + p.clicks, 0)
+    const impressions = perf.reduce((s, p) => s + (p.impressions || 0), 0)
+    const clicks = perf.reduce((s, p) => s + (p.clicks || 0), 0)
     const ctr = impressions ? (clicks / impressions) * 100 : 0
-    const creativeLeads = SEED_LEADS.filter(l => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l))
-    const leads = creativeLeads.length
-    const showed = creativeLeads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
-    const qualified = creativeLeads.filter(l => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
-    const proposals = creativeLeads.filter(l => ['proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
-    const closes = creativeLeads.filter(l => l.stage === 'closed_won').length
-    const revenue = creativeLeads.reduce((s, l) => s + (l.revenue || 0), 0)
-    const cpl = leads ? spend / leads : 0
+    const creativeLeads = allLeads.filter((l: Lead) => l.utm_content === creative.utm_content_value && isLeadInNewFunnel(l))
+    const leadCount = creativeLeads.length
+    const showed = creativeLeads.filter((l: Lead) => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
+    const qualified = creativeLeads.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
+    const proposals = creativeLeads.filter((l: Lead) => ['proposal_sent','proposal_live','closed_won'].includes(l.stage)).length
+    const closes = creativeLeads.filter((l: Lead) => l.stage === 'closed_won').length
+    const revenue = creativeLeads.reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+    const cpl = leadCount ? spend / leadCount : 0
     const cpa = closes ? spend / closes : 0
     const roas = spend ? revenue / spend : 0
-    const showRate = leads ? (showed / leads) * 100 : 0
-    return { creative, spend, impressions, clicks, ctr, leads, showed, qualified, proposals, closes, revenue, cpl, cpa, roas, showRate, creativeLeads }
+    const showRate = leadCount ? (showed / leadCount) * 100 : 0
+    return { creative, spend, impressions, clicks, ctr, leads: leadCount, showed, qualified, proposals, closes, revenue, cpl, cpa, roas, showRate, creativeLeads }
   })
 
   const sorted = [...rows].sort((a, b) => {
@@ -170,7 +191,7 @@ export default function AdPerformance() {
                     </td>
                   </tr>
 
-                  {/* Expanded: individual leads */}
+                  {/* Expanded: individual allLeads */}
                   {isExp && (
                     <tr style={{ borderBottom: `1px solid ${border}` }}>
                       <td colSpan={15} className="px-6 py-4" style={{ background: 'rgba(255,255,255,0.02)' }}>
@@ -181,7 +202,7 @@ export default function AdPerformance() {
                           <p className="text-sm" style={{ color: muted }}>No leads yet.</p>
                         ) : (
                           <div className="grid grid-cols-3 gap-2">
-                            {row.creativeLeads.map(lead => (
+                            {row.creativeLeads.map((lead: Lead) => (
                               <div key={lead.id} className="flex items-center justify-between rounded-lg px-3 py-2"
                                 style={{ background: surface, border: `1px solid ${border}` }}>
                                 <div>
