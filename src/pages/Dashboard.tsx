@@ -130,13 +130,22 @@ export default function Dashboard() {
   // Revenue closed = ALL TIME total from closed won leads
   const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
+  // Currently awaiting decision (for "Live proposals" card)
   const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage)).length
+  // Total ever sent (for funnel conversion rates and cost per proposal)
+  const liveTotalProposalsSent = activeLeadsData.filter((l: Lead) =>
+    ['proposal_sent', 'proposal_live', 'closed_won', 'closed_lost'].includes(l.stage) && Number(l.proposal_value) > 0
+  ).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
+  const [liveAdPerfRows, setLiveAdPerfRows] = React.useState<{date: string, spend: number}[]>([])
   React.useEffect(() => {
-    // Load ALL time ad spend for accurate cost per call
-    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?select=spend&limit=500`, {
+    // Load ALL time ad spend with dates for charts
+    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?select=date,spend&limit=1000`, {
       headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s' }
-    }).then(r => r.json()).then(rows => setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))).catch(() => {})
+    }).then(r => r.json()).then(rows => {
+      setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))
+      setLiveAdPerfRows(rows)
+    }).catch(() => {})
   }, [])
   const liveCostPerCallRaw = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
   const liveClosedWonRaw = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
@@ -148,7 +157,8 @@ export default function Dashboard() {
   const liveClosedWon = liveClosedWonRaw
   const liveTotalRevenueClosed = liveRevQRaw
   const liveCostPerCall = liveCostPerCallRaw
-  const liveCostPerProposal = liveProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveProposalsSent) : 0
+  const liveCostPerProposal = liveTotalProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveTotalProposalsSent) : 0
+  const liveROAS = liveSpend28d && liveRevQ ? (liveRevQ / liveSpend28d).toFixed(1) : null
   // Live flags from Supabase data
   const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < realNow)
   const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (realNow.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
@@ -182,8 +192,9 @@ export default function Dashboard() {
     const props = activeLeadsData.filter((l: Lead) =>
       l.proposal_sent_at && l.proposal_sent_at >= wStartISO && l.proposal_sent_at < wEndISO
     ).length
-    const spend = SEED_AD_PERFORMANCE.filter(p => p.date >= wStartISO.slice(0,10) && p.date < wEndISO.slice(0,10))
-      .reduce((s, p) => s + p.spend, 0)
+    const spendSource = liveAdPerfRows.length > 0 ? liveAdPerfRows : SEED_AD_PERFORMANCE
+    const spend = spendSource.filter(p => p.date >= wStartISO.slice(0,10) && p.date < wEndISO.slice(0,10))
+      .reduce((s, p) => s + (p.spend||0), 0)
     return { label: `W${tfWeeks-i}`, booked, qual, props, spend: Math.round(spend) }
   }).reverse()
 
@@ -211,8 +222,8 @@ export default function Dashboard() {
     { stage: 'Leads', count: liveTotalLeads, pct: 100, color: teal },
     { stage: 'Calls Booked', count: liveAllBooked, pct: liveTotalLeads ? Math.round(liveAllBooked/liveTotalLeads*100) : 0, color: teal },
     { stage: 'Attended', count: liveShowed, pct: liveAllBooked ? Math.round(liveShowed/liveAllBooked*100) : 0, color: amber },
-    { stage: 'Proposals Sent', count: liveProposalsSent, pct: liveShowed ? Math.round(liveProposalsSent/liveShowed*100) : 0, color: pink },
-    { stage: 'Closed Won', count: liveClosedWon, pct: liveProposalsSent ? Math.round(liveClosedWon/liveProposalsSent*100) : 0, color: '#22C55E' },
+    { stage: 'Proposals Sent', count: liveTotalProposalsSent, pct: liveShowed ? Math.round(liveTotalProposalsSent/liveShowed*100) : 0, color: pink },
+    { stage: 'Closed Won', count: liveClosedWon, pct: liveTotalProposalsSent ? Math.round(liveClosedWon/liveTotalProposalsSent*100) : 0, color: '#22C55E' },
   ]
 
   return (
@@ -260,8 +271,8 @@ export default function Dashboard() {
           sub="Cost to reach proposal stage" />
         <MetricCard label="Total revenue closed" value={`£${liveTotalRevenueClosed.toLocaleString()}`}
           sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
-        <MetricCard label="Active creatives" value={String(SEED_CREATIVES.filter(c=>c.status==='active').length)}
-          sub={`${SEED_CREATIVES.filter(c=>c.status==='paused').length} paused`} />
+        <MetricCard label="Return on ad spend" value={liveROAS ? `${liveROAS}x` : '—'}
+          sub={liveROAS ? `£${liveRevQ.toLocaleString()} revenue · £${Math.round(liveSpend28d).toLocaleString()} spend` : 'Awaiting spend data'} color={teal} />
       </div>
 
       {/* ── Timeframe selector ── */}
