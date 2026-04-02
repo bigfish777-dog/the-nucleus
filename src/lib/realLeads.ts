@@ -456,9 +456,9 @@ export const REAL_LEADS: Lead[] = [
     proposal_sent_at: "2026-02-11T12:00:00.000Z",
     proposal_value: 6945,
     revenue: 6945,
-    last_contact_at: "2026-02-09T16:00:00.000Z",
+    last_contact_at: "2026-02-13T12:00:00.000Z",
     created_at: "2026-02-04T23:58:00.000Z",
-    updated_at: "2026-02-09T16:00:00.000Z",
+    updated_at: "2026-02-13T12:00:00.000Z",
     call_datetime: "2026-02-09T16:00:00.000Z"
   },
   {
