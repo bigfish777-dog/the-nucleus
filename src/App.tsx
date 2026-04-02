@@ -7,6 +7,7 @@ import AdPerformance from './pages/AdPerformance'
 import CreativeLibrary from './pages/CreativeLibrary'
 import Tracking from './pages/Tracking'
 import Settings from './pages/Settings'
+import Proposals from './pages/Proposals'
 import Login, { isAuthenticated } from './pages/Login'
 import './index.css'
 
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/creatives" element={<CreativeLibrary />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/proposals" element={<Proposals />} />
           </Routes>
         </main>
       </div>
