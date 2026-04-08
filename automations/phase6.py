@@ -16,7 +16,7 @@ SUPABASE_URL = "https://oirnxlidjgsbcyhtxkse.supabase.co"
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s")
 META_TOKEN = "EAAVZAQllKN0gBRIKDYTRYdpuAyFB9d8rntGWBlZCllFj1GzLAsEaoAPpKGsTLfjemm17jPkdzfb9hB5tXE9rvUsqyl5UXn6MkNNh9Vteg8l5AUZAjZBShkEXzxMVt3GdnKhW9LZCBZAh2OZC52ctSsKJn7NfmQ6IzvtkSOp8fhsRXMHm9RZC6bKTTHyDlMUZC04CYOAZDZD"
 META_CAMPAIGN = "120237526110540006"
-FIREFLIES_KEY = "d88ef847-bf1a-4166-9f50-7d2d3e0f49c3"
+FIREFLIES_KEY = os.environ.get("FIREFLIES_KEY", "d88ef847-bf1a-4166-9f50-7d2d3e0f49c3")
 
 SB_H = {"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Content-Type": "application/json"}
 
@@ -85,7 +85,8 @@ def pull_meta_ads():
         try:
             sb_upsert('ad_performance_daily', perf, conflict='creative_id,date')
             inserted += 1
-        except: pass
+        except:
+            pass
     
     print(f"  Upserted: {inserted} performance records")
 
@@ -93,46 +94,52 @@ def pull_meta_ads():
 def process_fireflies():
     """Check for new Fireflies transcripts matching booked leads, process with analysis."""
     now = datetime.now(timezone.utc)
-    cutoff = (now - timedelta(hours=2)).isoformat()
     
     # Get booked leads whose call was recent (last 24 hrs)
-    recent_cutoff = (now - timedelta(hours=24)).isoformat()
+    recent_cutoff = urllib.parse.quote((now - timedelta(hours=24)).isoformat())
     leads = sb_get(f"leads?stage=eq.booked&call_datetime=gte.{recent_cutoff}&select=id,name,email,call_datetime,call_notes_auto")
     print(f"Fireflies: {len(leads)} recent booked calls to check")
     
     # Get transcripts from Fireflies
-    fh = {"x-api-key": FIREFLIES_KEY, "Content-Type": "application/json"}
-    query = '{"query":"{ transcripts(limit:20) { id title date participants { email } summary { action_items overview } } }"}'
-    req = urllib.request.Request("https://api.fireflies.ai/graphql",
-        data=query.encode(), headers=fh)
+    fh = {"Authorization": f"Bearer {FIREFLIES_KEY}", "Content-Type": "application/json"}
+    query = json.dumps({
+        "query": "{ transcripts(limit:20) { id title date participants summary { overview } speakers { name } } }"
+    }).encode()
+    req = urllib.request.Request("https://api.fireflies.ai/graphql", data=query, headers=fh)
     try:
         transcripts = json.load(urllib.request.urlopen(req, timeout=30))
         meetings = transcripts.get('data', {}).get('transcripts', [])
         print(f"  {len(meetings)} recent Fireflies transcripts")
     except Exception as e:
         print(f"  Fireflies error: {e}")
+        if hasattr(e, 'read'):
+            try:
+                print(f"  Fireflies body: {e.read().decode()[:1000]}")
+            except Exception:
+                pass
         return
     
     matched = 0
     for lead in leads:
-        lead_email = (lead.get('email') or '').lower()
-        lead_name = (lead.get('name') or '').lower()
+        lead_email = (lead.get('email') or '').lower().strip()
+        lead_name = (lead.get('name') or '').lower().strip()
+        lead_name_parts = [p for p in lead_name.replace('-', ' ').split() if len(p) > 2]
         
         for meeting in meetings:
-            participants = [p.get('email','').lower() for p in meeting.get('participants', [])]
-            title = meeting.get('title', '').lower()
+            participants = [(p or '').lower().strip() for p in meeting.get('participants', [])]
+            speaker_names = [(s.get('name') or '').lower().strip() for s in meeting.get('speakers', [])]
+            title = (meeting.get('title') or '').lower()
+            haystacks = participants + speaker_names + [title]
+
+            email_match = lead_email and any(lead_email == item for item in participants)
+            name_match = any(part in item for part in lead_name_parts for item in haystacks if item)
             
-            if lead_email in participants or any(part in lead_name for part in lead_name.split()):
-                summary = meeting.get('summary', {})
-                overview = summary.get('overview', '')
-                actions = '; '.join(summary.get('action_items', []))
-                
-                note = f"Fireflies summary: {overview}"
-                if actions:
-                    note += f"\nActions: {actions}"
+            if email_match or name_match:
+                overview = (meeting.get('summary') or {}).get('overview', '')
+                note = f"Fireflies summary: {overview}" if overview else "Fireflies summary pulled, but no overview was returned."
                 
                 sb_patch(f"leads?id=eq.{lead['id']}", {
-                    'stage': 'qualified',  # Attended call — move to awaiting proposal
+                    'stage': 'qualified',
                     'call_notes_auto': note,
                     'last_contact_at': now.isoformat()
                 })
