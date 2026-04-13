@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, Kanban, BarChart2, Film, Settings, Menu, X, Funnel } from 'lucide-react'
+import { LayoutDashboard, Kanban, BarChart2, Film, Settings, Menu, X, Funnel, Clapperboard } from 'lucide-react'
 
 const nav = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/pipeline', icon: Kanban, label: 'Pipeline' },
   { to: '/ads', icon: BarChart2, label: 'Ad Performance' },
   { to: '/creatives', icon: Film, label: 'Creative Library' },
+  { to: '/creative-production', icon: Clapperboard, label: 'Creative Production' },
   { to: '/tracking', icon: Funnel, label: 'Tracking' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
