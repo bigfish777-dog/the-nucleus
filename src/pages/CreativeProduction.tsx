@@ -6,8 +6,7 @@ type ScriptStage = 'scripted' | 'recorded' | 'sent_to_editor' | 'proof_received'
 type ScriptItem = {
   id: string
   title: string
-  hook?: string
-  type?: string
+  script: string
   stage: ScriptStage
   created_at: string
 }
@@ -27,12 +26,19 @@ const STAGES: { key: ScriptStage; label: string; color: string }[] = [
   { key: 'uploaded', label: 'Uploaded', color: '#22C55E' },
 ]
 
-const INITIAL_ITEMS: ScriptItem[] = []
+const INITIAL_ITEMS: ScriptItem[] = [
+  {
+    id: 'script_hook_3b_reshoot',
+    title: 'Hook 3B (Reshoot)',
+    script: `Most agencies send you a strategy doc and then fuck off.\n\nCoaching programmes tell you what you should be doing, but then leave you to do all the work.\n\nWe don’t do either.\n\nWe work as your fractional marketing department. Copy, tech, funnels, design. Everything you need. Done for you. Not just taught.\n\nIf that sounds like what you’re looking for, apply below.`,
+    stage: 'recorded',
+    created_at: '2026-04-13',
+  },
+]
 
 function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: (item: ScriptItem) => void }) {
   const [title, setTitle] = useState('')
-  const [hook, setHook] = useState('')
-  const [type, setType] = useState('')
+  const [script, setScript] = useState('')
   const [error, setError] = useState('')
 
   const inputStyle = { width: '100%', padding: '10px 12px', background: surface, border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
@@ -46,8 +52,7 @@ function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
     onCreate({
       id: `script_${Date.now()}`,
       title: title.trim(),
-      hook: hook.trim() || undefined,
-      type: type.trim() || undefined,
+      script: script.trim(),
       stage: 'scripted',
       created_at: new Date().toISOString().slice(0, 10),
     })
@@ -68,12 +73,8 @@ function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
             <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Bottleneck — founder reviewing everything" />
           </div>
           <div>
-            <label style={labelStyle}>Hook / opening line</label>
-            <textarea style={{ ...inputStyle, minHeight: 88 }} value={hook} onChange={e => setHook(e.target.value)} placeholder="Optional hook text" />
-          </div>
-          <div>
-            <label style={labelStyle}>Type</label>
-            <input style={inputStyle} value={type} onChange={e => setType(e.target.value)} placeholder="Direct response / Qualifier / Testimonial etc" />
+            <label style={labelStyle}>Full script</label>
+            <textarea style={{ ...inputStyle, minHeight: 180 }} value={script} onChange={e => setScript(e.target.value)} placeholder="Paste the full script here" />
           </div>
           {error && <p className="text-xs font-semibold" style={{ color: pink }}>{error}</p>}
         </div>
@@ -94,13 +95,12 @@ function ScriptCard({ item, onAdvance }: { item: ScriptItem; onAdvance: (id: str
         <GripVertical size={14} style={{ color: muted, marginTop: 2, flexShrink: 0 }} />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold leading-tight" style={{ color: '#F0F2F8' }}>{item.title}</p>
-          {item.hook && <p className="text-xs mt-1 italic" style={{ color: muted }}>&ldquo;{item.hook}&rdquo;</p>}
+          <p className="text-xs mt-1 whitespace-pre-line" style={{ color: muted }}>{item.script}</p>
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-2 mt-3">
         <div className="flex gap-2 flex-wrap">
-          {item.type && <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: `${pink}12`, color: pink }}>{item.type}</span>}
           <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: muted }}>{item.created_at}</span>
         </div>
         <button onClick={() => onAdvance(item.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)', color: '#F0F2F8' }}>
