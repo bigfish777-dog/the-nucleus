@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import Pipeline from './pages/Pipeline'
 import AdPerformance from './pages/AdPerformance'
 import CreativeLibrary from './pages/CreativeLibrary'
+import CreativeProduction from './pages/CreativeProduction'
 import Tracking from './pages/Tracking'
 import Settings from './pages/Settings'
 import Proposals from './pages/Proposals'
@@ -46,6 +47,7 @@ export default function App() {
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/ads" element={<AdPerformance />} />
             <Route path="/creatives" element={<CreativeLibrary />} />
+            <Route path="/creative-production" element={<CreativeProduction />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/proposals" element={<Proposals />} />
