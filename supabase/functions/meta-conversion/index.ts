@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createHash } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 // TTM Pixel ID — primary pixel
 const PIXEL_ID = "1427972831789819";
@@ -28,7 +27,21 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { eventName, email, phone, utm_source, utm_campaign, utm_content, custom_params } = await req.json();
+    const {
+      eventName,
+      email,
+      phone,
+      utm_source,
+      utm_campaign,
+      utm_content,
+      eventId,
+      eventSourceUrl,
+      fbclid,
+      fbp,
+      fbc,
+      testEventCode,
+      custom_params,
+    } = await req.json();
 
     if (!META_TOKEN) {
       console.error("META_TOKEN not set");
@@ -46,13 +59,17 @@ serve(async (req: Request) => {
     const payload = {
       data: [
         {
-          event_name: eventName || "Schedule",
+          event_name: eventName || "Purchase",
           event_time: eventTime,
+          ...(eventId && { event_id: eventId }),
           action_source: "website",
-          event_source_url: "https://book.testtubemarketing.com",
+          event_source_url: eventSourceUrl || "https://book.testtubemarketing.com",
           user_data: {
             ...(hashedEmail && { em: [hashedEmail] }),
             ...(hashedPhone && { ph: [hashedPhone] }),
+            ...(fbclid && { fbclid }),
+            ...(fbp && { fbp }),
+            ...(fbc && { fbc }),
             client_user_agent: req.headers.get("user-agent") || "",
           },
           custom_data: {
@@ -61,11 +78,11 @@ serve(async (req: Request) => {
             ...(utm_source && { utm_source }),
             ...(utm_campaign && { utm_campaign }),
             ...(utm_content && { utm_content }),
-            // Pass through Meta's URL params (adset, hook) as custom data
             ...(custom_params || {}),
           },
         },
       ],
+      ...(testEventCode ? { test_event_code: testEventCode } : {}),
     };
 
     const response = await fetch(

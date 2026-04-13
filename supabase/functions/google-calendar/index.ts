@@ -12,6 +12,96 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
+const PIXEL_ID = "1427972831789819";
+const META_TOKEN = Deno.env.get("META_TOKEN") || "";
+
+async function sha256Hash(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value.toLowerCase().trim());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function sendMetaPurchase({
+  email,
+  phone,
+  eventId,
+  eventSourceUrl,
+  userAgent,
+  fbclid,
+  fbp,
+  fbc,
+  utm_source,
+  utm_campaign,
+  utm_content,
+  custom_params,
+}: {
+  email?: string;
+  phone?: string;
+  eventId: string;
+  eventSourceUrl?: string;
+  userAgent?: string;
+  fbclid?: string;
+  fbp?: string;
+  fbc?: string;
+  utm_source?: string;
+  utm_campaign?: string;
+  utm_content?: string;
+  custom_params?: Record<string, unknown>;
+}) {
+  if (!META_TOKEN) {
+    return { skipped: true, reason: "META_TOKEN not configured" };
+  }
+
+  const hashedEmail = email ? await sha256Hash(email) : undefined;
+  const hashedPhone = phone ? await sha256Hash(phone.replace(/\s+/g, "").replace(/^\+/, "")) : undefined;
+
+  const payload = {
+    data: [
+      {
+        event_name: "Purchase",
+        event_time: Math.floor(Date.now() / 1000),
+        event_id: eventId,
+        action_source: "website",
+        event_source_url: eventSourceUrl || "https://book.testtubemarketing.com",
+        user_data: {
+          ...(hashedEmail && { em: [hashedEmail] }),
+          ...(hashedPhone && { ph: [hashedPhone] }),
+          ...(fbclid && { fbclid }),
+          ...(fbp && { fbp }),
+          ...(fbc && { fbc }),
+          ...(userAgent && { client_user_agent: userAgent }),
+        },
+        custom_data: {
+          currency: "GBP",
+          value: 1,
+          ...(utm_source && { utm_source }),
+          ...(utm_campaign && { utm_campaign }),
+          ...(utm_content && { utm_content }),
+          ...(custom_params || {}),
+        },
+      },
+    ],
+  };
+
+  const response = await fetch(
+    `https://graph.facebook.com/v19.0/${PIXEL_ID}/events?access_token=${META_TOKEN}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(JSON.stringify(result));
+  }
+
+  return result;
+}
+
 // Nick's availability rules
 const AVAILABILITY_CONFIG = {
   timezone: "Europe/London",
@@ -318,12 +408,24 @@ serve(async (req: Request) => {
 
       // Update lead record with event ID and confirmed stage
       // Try by leadId first, fall back to email lookup
+      const leadTrackingFields = {
+        utm_source: body.utm_source || null,
+        utm_medium: body.utm_medium || null,
+        utm_campaign: body.utm_campaign || null,
+        utm_content: body.utm_content || null,
+        fbclid: body.fbclid || null,
+        fbp: body.fbp || null,
+        fbc: body.fbc || null,
+        event_source_url: body.event_source_url || "https://book.testtubemarketing.com",
+      };
+
       const updatePayload = {
         google_event_id: calData.id,
         call_datetime: slotStart,
         stage: "booked",
         booking_completed: true,
         updated_at: new Date().toISOString(),
+        ...leadTrackingFields,
       };
 
       if (leadId) {
@@ -364,11 +466,62 @@ serve(async (req: Request) => {
         return data?.[0]?.id;
       })());
 
+      let metaPurchaseResult: any = null;
+
       if (confirmedLeadId) {
-        // Mark booked_at so mailer.py send_confirmation can be triggered
-        await supabase.from("leads").update({
-          booked_at: new Date().toISOString(),
-        }).eq("id", confirmedLeadId).is("booked_at", null);
+        const bookedAt = new Date().toISOString();
+
+        const { data: bookedLead } = await supabase
+          .from("leads")
+          .select("id,email,phone,utm_source,utm_campaign,utm_content,fbclid,fbp,fbc,event_source_url,purchase_event_id,meta_purchase_sent_at")
+          .eq("id", confirmedLeadId)
+          .single();
+
+        let purchaseEventId = bookedLead?.purchase_event_id;
+        if (!purchaseEventId) {
+          purchaseEventId = crypto.randomUUID();
+        }
+
+        await supabase
+          .from("leads")
+          .update({
+            booked_at: bookedAt,
+            purchase_event_id: purchaseEventId,
+          })
+          .eq("id", confirmedLeadId);
+
+        if (!bookedLead?.meta_purchase_sent_at) {
+          try {
+            metaPurchaseResult = await sendMetaPurchase({
+              email: bookedLead?.email || leadEmail,
+              phone: bookedLead?.phone || leadPhone,
+              eventId: purchaseEventId,
+              eventSourceUrl: bookedLead?.event_source_url || body.event_source_url,
+              userAgent: req.headers.get("user-agent") || "",
+              fbclid: bookedLead?.fbclid || body.fbclid,
+              fbp: bookedLead?.fbp || body.fbp,
+              fbc: bookedLead?.fbc || body.fbc,
+              utm_source: bookedLead?.utm_source || body.utm_source,
+              utm_campaign: bookedLead?.utm_campaign || body.utm_campaign,
+              utm_content: bookedLead?.utm_content || body.utm_content,
+              custom_params: {
+                hook: body.hook || "",
+                adset: body.adset || "",
+              },
+            });
+
+            await supabase.from("leads").update({
+              meta_purchase_sent_at: new Date().toISOString(),
+              meta_purchase_response: metaPurchaseResult,
+            }).eq("id", confirmedLeadId);
+          } catch (metaErr: any) {
+            await supabase.from("leads").update({
+              meta_purchase_response: {
+                error: metaErr?.message || String(metaErr),
+              },
+            }).eq("id", confirmedLeadId);
+          }
+        }
       }
 
       return new Response(
@@ -379,6 +532,7 @@ serve(async (req: Request) => {
           start: slotStart,
           end: slotEnd,
           leadId: confirmedLeadId,
+          metaPurchaseSent: Boolean(metaPurchaseResult && !metaPurchaseResult.skipped),
         }),
         {
           status: 201,

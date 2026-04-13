@@ -25,3 +25,14 @@ create policy "allow insert tracking events" on tracking_events for insert with 
 
 drop policy if exists "allow read tracking events" on tracking_events;
 create policy "allow read tracking events" on tracking_events for select using (true);
+
+alter table leads add column if not exists fbclid text;
+alter table leads add column if not exists fbp text;
+alter table leads add column if not exists fbc text;
+alter table leads add column if not exists event_source_url text;
+alter table leads add column if not exists purchase_event_id text;
+alter table leads add column if not exists meta_purchase_sent_at timestamptz;
+alter table leads add column if not exists meta_purchase_response jsonb;
+alter table leads add column if not exists website text;
+alter table leads add column if not exists challenge text;
+alter table leads add column if not exists readiness text;
