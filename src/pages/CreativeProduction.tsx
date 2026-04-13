@@ -1,140 +1,141 @@
 import { useMemo, useState } from 'react'
-import { CheckCircle2, Circle, Clock3, Mic, PenSquare, Rocket, Video, AlertCircle } from 'lucide-react'
+import { Plus, GripVertical } from 'lucide-react'
 
-type ProductionStage = 'script_ideas' | 'scripts_ready' | 'recording' | 'editing' | 'ready_to_launch' | 'live' | 'parked'
+type ScriptStage = 'scripted' | 'recorded' | 'sent_to_editor' | 'proof_received' | 'approved' | 'uploaded'
 
-type ProductionItem = {
+type ScriptItem = {
   id: string
   title: string
-  angle: string
-  hookType: 'direct_response' | 'qualifier' | 'testimonial' | 'thought_leadership'
-  stage: ProductionStage
-  scriptCount: number
-  recordedCount: number
-  editedCount: number
-  owner: string
-  nextStep: string
-  notes?: string
+  hook?: string
+  type?: string
+  stage: ScriptStage
+  created_at: string
 }
 
 const bg = '#161B27'
+const surface = '#111827'
 const border = 'rgba(255,255,255,0.08)'
 const muted = '#8891A8'
 const pink = '#FF0D64'
-const teal = '#3FEACE'
-const amber = '#FFA71A'
-const green = '#22C55E'
 
-const STAGES: { key: ProductionStage; label: string; color: string }[] = [
-  { key: 'script_ideas', label: 'Script Ideas', color: muted },
-  { key: 'scripts_ready', label: 'Scripts Ready', color: pink },
-  { key: 'recording', label: 'Recording', color: amber },
-  { key: 'editing', label: 'Editing', color: '#60A5FA' },
-  { key: 'ready_to_launch', label: 'Ready to Launch', color: teal },
-  { key: 'live', label: 'Live', color: green },
-  { key: 'parked', label: 'Parked', color: '#6B7280' },
+const STAGES: { key: ScriptStage; label: string; color: string }[] = [
+  { key: 'scripted', label: 'Scripted', color: '#FF0D64' },
+  { key: 'recorded', label: 'Recorded', color: '#FFA71A' },
+  { key: 'sent_to_editor', label: 'Sent to editor', color: '#60A5FA' },
+  { key: 'proof_received', label: 'Proof received', color: '#A78BFA' },
+  { key: 'approved', label: 'Approved', color: '#3FEACE' },
+  { key: 'uploaded', label: 'Uploaded', color: '#22C55E' },
 ]
 
-const SEED_ITEMS: ProductionItem[] = [
-  {
-    id: 'cp1',
-    title: 'Bottleneck batch',
-    angle: 'Founder bottleneck / execution gap',
-    hookType: 'direct_response',
-    stage: 'recording',
-    scriptCount: 8,
-    recordedCount: 6,
-    editedCount: 0,
-    owner: 'Nick',
-    nextStep: 'Record final 2 scripts, then hand all 8 into editing',
-    notes: 'This is the current active batch and the one most likely to get chaotic first.',
-  },
-  {
-    id: 'cp2',
-    title: 'Agency frustration angles',
-    angle: 'Agencies disappear after strategy deck',
-    hookType: 'direct_response',
-    stage: 'scripts_ready',
-    scriptCount: 5,
-    recordedCount: 0,
-    editedCount: 0,
-    owner: 'Nick',
-    nextStep: 'Choose top 3 to record first',
-  },
-  {
-    id: 'cp3',
-    title: '£500k+ qualifier set',
-    angle: 'Revenue-qualified founder pain',
-    hookType: 'qualifier',
-    stage: 'editing',
-    scriptCount: 4,
-    recordedCount: 4,
-    editedCount: 2,
-    owner: 'Nick',
-    nextStep: 'Review first two edits and approve cut style',
-  },
-  {
-    id: 'cp4',
-    title: 'Client result testimonials',
-    angle: 'Proof / credibility / transformation',
-    hookType: 'testimonial',
-    stage: 'script_ideas',
-    scriptCount: 3,
-    recordedCount: 0,
-    editedCount: 0,
-    owner: 'Nick',
-    nextStep: 'Turn rough notes into final scripts',
-  },
-  {
-    id: 'cp5',
-    title: 'Operator / thought-leadership cuts',
-    angle: 'Why execution beats another strategy session',
-    hookType: 'thought_leadership',
-    stage: 'parked',
-    scriptCount: 2,
-    recordedCount: 0,
-    editedCount: 0,
-    owner: 'Nick',
-    nextStep: 'Park until direct response batch is through',
-  },
+const INITIAL_ITEMS: ScriptItem[] = [
+  { id: 'sp1', title: 'Bottleneck — founder reviewing everything', hook: 'Stop being the bottleneck in your own marketing', type: 'Direct response', stage: 'scripted', created_at: '2026-04-12' },
+  { id: 'sp2', title: 'Agency frustration — strategy deck then silence', hook: 'Most agencies send a strategy doc then disappear', type: 'Direct response', stage: 'recorded', created_at: '2026-04-12' },
+  { id: 'sp3', title: '£500k qualifier — outgrown DIY marketing', hook: 'If you’re doing £500k+ and still the marketing bottleneck…', type: 'Qualifier', stage: 'sent_to_editor', created_at: '2026-04-11' },
+  { id: 'sp4', title: 'Client result — growth without founder doing it all', hook: 'What changes when execution stops relying on you', type: 'Testimonial', stage: 'proof_received', created_at: '2026-04-11' },
+  { id: 'sp5', title: 'Execution > another strategy session', hook: 'You do not need more advice. You need more done.', type: 'Thought leadership', stage: 'approved', created_at: '2026-04-10' },
+  { id: 'sp6', title: 'Bottleneck variation — every campaign needs you', hook: 'If every ad and email has to go through you first…', type: 'Direct response', stage: 'uploaded', created_at: '2026-04-09' },
 ]
 
-function ProgressPill({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: string }) {
+function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: (item: ScriptItem) => void }) {
+  const [title, setTitle] = useState('')
+  const [hook, setHook] = useState('')
+  const [type, setType] = useState('')
+  const [error, setError] = useState('')
+
+  const inputStyle = { width: '100%', padding: '10px 12px', background: surface, border: `1px solid ${border}`, borderRadius: 8, color: '#F0F2F8', fontSize: 13, outline: 'none', boxSizing: 'border-box' as const }
+  const labelStyle = { display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.05em', color: muted, marginBottom: 6 }
+
+  const submit = () => {
+    if (!title.trim()) {
+      setError('Script title is required')
+      return
+    }
+    onCreate({
+      id: `script_${Date.now()}`,
+      title: title.trim(),
+      hook: hook.trim() || undefined,
+      type: type.trim() || undefined,
+      stage: 'scripted',
+      created_at: new Date().toISOString().slice(0, 10),
+    })
+    onClose()
+  }
+
   return (
-    <div className="rounded-lg px-3 py-2" style={{ background: `${color}10`, border: `1px solid ${color}25` }}>
-      <div className="flex items-center gap-2 mb-1" style={{ color }}>
-        {icon}
-        <span className="text-[10px] font-bold uppercase tracking-wider">{label}</span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }} onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl overflow-hidden" style={{ background: '#111827', border: `1px solid ${border}` }} onClick={e => e.stopPropagation()}>
+        <div className="px-6 py-4" style={{ borderBottom: `1px solid ${border}` }}>
+          <h2 className="text-base font-bold" style={{ color: '#F0F2F8' }}>Add new script</h2>
+          <p className="text-xs mt-0.5" style={{ color: muted }}>Create a new creative item and start it in Scripted.</p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label style={labelStyle}>Script title</label>
+            <input style={inputStyle} value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Bottleneck — founder reviewing everything" />
+          </div>
+          <div>
+            <label style={labelStyle}>Hook / opening line</label>
+            <textarea style={{ ...inputStyle, minHeight: 88 }} value={hook} onChange={e => setHook(e.target.value)} placeholder="Optional hook text" />
+          </div>
+          <div>
+            <label style={labelStyle}>Type</label>
+            <input style={inputStyle} value={type} onChange={e => setType(e.target.value)} placeholder="Direct response / Qualifier / Testimonial etc" />
+          </div>
+          {error && <p className="text-xs font-semibold" style={{ color: pink }}>{error}</p>}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: `1px solid ${border}` }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ background: 'rgba(255,255,255,0.06)', color: muted }}>Cancel</button>
+          <button onClick={submit} className="px-4 py-2 rounded-lg text-sm font-bold" style={{ background: pink, color: '#fff' }}>Add script</button>
+        </div>
       </div>
-      <p className="text-sm font-bold" style={{ color: '#F0F2F8' }}>{value}</p>
     </div>
   )
 }
 
-function StageBadge({ stage }: { stage: ProductionStage }) {
-  const match = STAGES.find(s => s.key === stage)!
+function ScriptCard({ item, onAdvance }: { item: ScriptItem; onAdvance: (id: string) => void }) {
   return (
-    <span className="text-[10px] font-bold px-2 py-1 rounded-full" style={{ background: `${match.color}15`, color: match.color }}>
-      {match.label}
-    </span>
+    <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
+      <div className="flex items-start gap-2 mb-2">
+        <GripVertical size={14} style={{ color: muted, marginTop: 2, flexShrink: 0 }} />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-tight" style={{ color: '#F0F2F8' }}>{item.title}</p>
+          {item.hook && <p className="text-xs mt-1 italic" style={{ color: muted }}>&ldquo;{item.hook}&rdquo;</p>}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-2 mt-3">
+        <div className="flex gap-2 flex-wrap">
+          {item.type && <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: `${pink}12`, color: pink }}>{item.type}</span>}
+          <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: muted }}>{item.created_at}</span>
+        </div>
+        <button onClick={() => onAdvance(item.id)} className="text-[11px] font-bold px-2.5 py-1.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.08)', color: '#F0F2F8' }}>
+          Move on →
+        </button>
+      </div>
+    </div>
   )
 }
 
 export default function CreativeProduction() {
-  const [stageFilter, setStageFilter] = useState<'All' | ProductionStage>('All')
+  const [items, setItems] = useState<ScriptItem[]>(INITIAL_ITEMS)
+  const [showAdd, setShowAdd] = useState(false)
 
-  const filtered = useMemo(() => {
-    return SEED_ITEMS.filter(item => stageFilter === 'All' || item.stage === stageFilter)
-  }, [stageFilter])
+  const counts = useMemo(() => {
+    const out = Object.fromEntries(STAGES.map(stage => [stage.key, 0])) as Record<ScriptStage, number>
+    for (const item of items) out[item.stage] += 1
+    return out
+  }, [items])
 
-  const totals = useMemo(() => {
-    return SEED_ITEMS.reduce((acc, item) => {
-      acc.scripts += item.scriptCount
-      acc.recorded += item.recordedCount
-      acc.edited += item.editedCount
-      return acc
-    }, { scripts: 0, recorded: 0, edited: 0 })
-  }, [])
+  const advanceStage = (id: string) => {
+    setItems(current => current.map(item => {
+      if (item.id !== id) return item
+      const index = STAGES.findIndex(stage => stage.key === item.stage)
+      if (index === -1 || index === STAGES.length - 1) return item
+      return { ...item, stage: STAGES[index + 1].key }
+    }))
+  }
 
   return (
     <div className="space-y-4">
@@ -142,113 +143,48 @@ export default function CreativeProduction() {
         <div>
           <h1 className="text-xl font-bold" style={{ color: '#F0F2F8' }}>Creative Production</h1>
           <p className="text-sm mt-0.5" style={{ color: muted }}>
-            Track new ad creative from script pile to live launch so batches don’t descend into chaos.
+            Simple pipeline for taking each script from drafted to uploaded.
           </p>
         </div>
 
-        <div className="flex gap-2 flex-wrap">
-          <ProgressPill icon={<PenSquare size={12} />} label="Scripts" value={String(totals.scripts)} color={pink} />
-          <ProgressPill icon={<Mic size={12} />} label="Recorded" value={String(totals.recorded)} color={amber} />
-          <ProgressPill icon={<Video size={12} />} label="Edited" value={String(totals.edited)} color={teal} />
-        </div>
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold" style={{ background: pink, color: '#fff' }}>
+          <Plus size={16} /> Add script
+        </button>
       </div>
 
-      <div className="rounded-xl p-4" style={{ background: bg, border: `1px solid ${border}` }}>
-        <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider" style={{ color: muted }}>Suggested workflow</p>
-            <p className="text-sm mt-1" style={{ color: '#F0F2F8' }}>Idea → final scripts → recorded → edited → ready to launch → live</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        {STAGES.map(stage => (
+          <div key={stage.key} className="rounded-xl p-3" style={{ background: bg, border: `1px solid ${border}` }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: stage.color }}>{stage.label}</p>
+            <p className="text-2xl font-bold mt-2" style={{ color: '#F0F2F8' }}>{counts[stage.key]}</p>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              onClick={() => setStageFilter('All')}
-              className="px-3 py-1.5 text-xs font-semibold rounded-lg"
-              style={{ background: stageFilter === 'All' ? 'rgba(255,255,255,0.08)' : 'transparent', color: stageFilter === 'All' ? '#F0F2F8' : muted }}
-            >
-              All
-            </button>
-            {STAGES.map(stage => (
-              <button
-                key={stage.key}
-                onClick={() => setStageFilter(stage.key)}
-                className="px-3 py-1.5 text-xs font-semibold rounded-lg"
-                style={{ background: stageFilter === stage.key ? `${stage.color}18` : 'transparent', color: stageFilter === stage.key ? stage.color : muted }}
-              >
-                {stage.label}
-              </button>
-            ))}
-          </div>
-        </div>
+        ))}
+      </div>
 
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-3">
-          {filtered.map(item => (
-            <div key={item.id} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
-                  <p className="text-sm font-semibold" style={{ color: '#F0F2F8' }}>{item.title}</p>
-                  <p className="text-xs mt-1" style={{ color: muted }}>{item.angle}</p>
-                </div>
-                <StageBadge stage={item.stage} />
+      <div className="grid xl:grid-cols-6 md:grid-cols-2 gap-3">
+        {STAGES.map(stage => {
+          const stageItems = items.filter(item => item.stage === stage.key)
+          return (
+            <div key={stage.key} className="rounded-xl p-3 min-h-[360px]" style={{ background: bg, border: `1px solid ${border}` }}>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold" style={{ color: '#F0F2F8' }}>{stage.label}</h2>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: `${stage.color}15`, color: stage.color }}>{stageItems.length}</span>
               </div>
-
-              <div className="flex gap-2 flex-wrap mb-3">
-                <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: `${pink}12`, color: pink }}>{item.hookType.replace('_', ' ')}</span>
-                <span className="text-[10px] px-2 py-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)', color: muted }}>Owner: {item.owner}</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="text-[10px] uppercase font-bold" style={{ color: muted }}>Scripts</p>
-                  <p className="text-sm font-bold" style={{ color: '#F0F2F8' }}>{item.scriptCount}</p>
-                </div>
-                <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="text-[10px] uppercase font-bold" style={{ color: muted }}>Recorded</p>
-                  <p className="text-sm font-bold" style={{ color: '#F0F2F8' }}>{item.recordedCount}</p>
-                </div>
-                <div className="rounded-lg p-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
-                  <p className="text-[10px] uppercase font-bold" style={{ color: muted }}>Edited</p>
-                  <p className="text-sm font-bold" style={{ color: '#F0F2F8' }}>{item.editedCount}</p>
-                </div>
-              </div>
-
-              <div className="rounded-lg p-3 mb-2" style={{ background: `${amber}10`, border: `1px solid ${amber}18` }}>
-                <div className="flex items-center gap-2 mb-1" style={{ color: amber }}>
-                  <Clock3 size={12} />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Next step</span>
-                </div>
-                <p className="text-sm" style={{ color: '#F0F2F8' }}>{item.nextStep}</p>
-              </div>
-
-              {item.notes && (
-                <div className="rounded-lg p-3" style={{ background: `${pink}08`, border: `1px solid ${pink}18` }}>
-                  <div className="flex items-center gap-2 mb-1" style={{ color: pink }}>
-                    <AlertCircle size={12} />
-                    <span className="text-[10px] font-bold uppercase tracking-wider">Watch-out</span>
+              <div className="space-y-3">
+                {stageItems.length === 0 ? (
+                  <div className="rounded-xl p-4 text-sm" style={{ background: 'rgba(255,255,255,0.02)', border: `1px dashed ${border}`, color: muted }}>
+                    Nothing here.
                   </div>
-                  <p className="text-sm" style={{ color: '#F0F2F8' }}>{item.notes}</p>
-                </div>
-              )}
+                ) : stageItems.map(item => (
+                  <ScriptCard key={item.id} item={item} onAdvance={advanceStage} />
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          )
+        })}
       </div>
 
-      <div className="rounded-xl p-4" style={{ background: bg, border: `1px solid ${border}` }}>
-        <p className="text-xs font-bold uppercase tracking-wider mb-3" style={{ color: muted }}>What this tab should become next</p>
-        <div className="grid md:grid-cols-2 xl:grid-cols-4 gap-3">
-          {[
-            { icon: <Circle size={14} />, title: 'Script bank', body: 'Store every draft script so nothing lives only in notes, Slack or your head.' },
-            { icon: <Mic size={14} />, title: 'Recording tracker', body: 'Mark which scripts are recorded, where the raw files live, and what still needs filming.' },
-            { icon: <CheckCircle2 size={14} />, title: 'Edit approval', body: 'Track what is awaiting edit, awaiting review, and ready to publish.' },
-            { icon: <Rocket size={14} />, title: 'Launch queue', body: 'Keep a clean list of what is approved and ready to turn into live ads.' },
-          ].map(card => (
-            <div key={card.title} className="rounded-xl p-4" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
-              <div className="flex items-center gap-2 mb-2" style={{ color: teal }}>{card.icon}<span className="text-sm font-semibold" style={{ color: '#F0F2F8' }}>{card.title}</span></div>
-              <p className="text-sm" style={{ color: muted }}>{card.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
+      {showAdd && <AddScriptModal onClose={() => setShowAdd(false)} onCreate={(item) => setItems(current => [item, ...current])} />}
     </div>
   )
 }
