@@ -27,14 +27,7 @@ const STAGES: { key: ScriptStage; label: string; color: string }[] = [
   { key: 'uploaded', label: 'Uploaded', color: '#22C55E' },
 ]
 
-const INITIAL_ITEMS: ScriptItem[] = [
-  { id: 'sp1', title: 'Bottleneck — founder reviewing everything', hook: 'Stop being the bottleneck in your own marketing', type: 'Direct response', stage: 'scripted', created_at: '2026-04-12' },
-  { id: 'sp2', title: 'Agency frustration — strategy deck then silence', hook: 'Most agencies send a strategy doc then disappear', type: 'Direct response', stage: 'recorded', created_at: '2026-04-12' },
-  { id: 'sp3', title: '£500k qualifier — outgrown DIY marketing', hook: 'If you’re doing £500k+ and still the marketing bottleneck…', type: 'Qualifier', stage: 'sent_to_editor', created_at: '2026-04-11' },
-  { id: 'sp4', title: 'Client result — growth without founder doing it all', hook: 'What changes when execution stops relying on you', type: 'Testimonial', stage: 'proof_received', created_at: '2026-04-11' },
-  { id: 'sp5', title: 'Execution > another strategy session', hook: 'You do not need more advice. You need more done.', type: 'Thought leadership', stage: 'approved', created_at: '2026-04-10' },
-  { id: 'sp6', title: 'Bottleneck variation — every campaign needs you', hook: 'If every ad and email has to go through you first…', type: 'Direct response', stage: 'uploaded', created_at: '2026-04-09' },
-]
+const INITIAL_ITEMS: ScriptItem[] = []
 
 function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: (item: ScriptItem) => void }) {
   const [title, setTitle] = useState('')
