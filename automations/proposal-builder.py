@@ -162,7 +162,7 @@ body{{font-family:'Inter',system-ui,sans-serif;color:var(--text);background:#fff
 .callout{{background:white;border-left:3px solid var(--pink);padding:18px 24px;border-radius:0 8px 8px 0;margin:24px 0;font-style:italic;font-size:16px;line-height:1.65;max-width:700px;}}
 .sec-alt .callout{{background:white;}}
 .ws-tag{{display:inline-block;background:var(--pink);color:white;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;letter-spacing:.04em;margin-bottom:10px;}}
-.ws-title{{font-family:'Poppins',sans-serif;font-size:22px;font-weight:700;margin-bottom:8px;}}
+.ws-title{{font-family:'Poppins',sans-serif;font-size:26px;font-weight:700;margin-bottom:8px;}}
 .ws-block{{margin-top:28px;max-width:720px;}}
 .dlist{{list-style:none;display:flex;flex-direction:column;gap:13px;max-width:700px;margin-top:16px;}}
 .dlist li{{display:flex;align-items:flex-start;gap:10px;font-size:16px;line-height:1.65;}}
