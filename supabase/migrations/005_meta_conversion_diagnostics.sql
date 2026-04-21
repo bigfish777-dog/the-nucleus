@@ -1,0 +1,9 @@
+-- Meta conversion support and diagnostics
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS fbclid TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS fbp TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS fbc TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS event_source_url TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS purchase_event_id TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta_purchase_sent_at TIMESTAMPTZ;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta_purchase_status TEXT;
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS meta_purchase_error TEXT;

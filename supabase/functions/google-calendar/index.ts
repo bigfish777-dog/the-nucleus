@@ -6,6 +6,8 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const META_CONVERSION_URL = `${SUPABASE_URL}/functions/v1/meta-conversion`;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -24,6 +26,53 @@ const AVAILABILITY_CONFIG = {
   minNoticeHours: 24,
   maxWorkingDaysAhead: 4,
 };
+
+function buildPurchaseEventId(leadId: string, slotStart: string): string {
+  return `purchase_${leadId}_${slotStart}`;
+}
+
+async function sendMetaPurchase(lead: {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
+  event_source_url?: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+}, slotStart: string) {
+  const eventId = buildPurchaseEventId(lead.id, slotStart);
+  const response = await fetch(META_CONVERSION_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventName: "Purchase",
+      eventId,
+      eventTime: Math.floor(Date.now() / 1000),
+      eventSourceUrl: lead.event_source_url || "https://book.testtubemarketing.com",
+      email: lead.email,
+      phone: lead.phone,
+      fbp: lead.fbp || undefined,
+      fbc: lead.fbc || undefined,
+      externalId: lead.id,
+      utm_source: lead.utm_source || undefined,
+      utm_campaign: lead.utm_campaign || undefined,
+      utm_content: lead.utm_content || undefined,
+      custom_params: {
+        lead_id: lead.id,
+        booking_slot_start: slotStart,
+      },
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Meta purchase send failed: ${JSON.stringify(result)}`);
+  }
+
+  return { eventId, result };
+}
 
 async function getValidAccessToken(supabase: any): Promise<string> {
   const { data: tokenRow, error } = await supabase
@@ -246,7 +295,20 @@ serve(async (req: Request) => {
     // POST /book
     if (req.method === "POST" && path.endsWith("/book")) {
       const body = await req.json();
-      const { slotStart, slotEnd, leadName, leadEmail, leadPhone, leadId } = body;
+      const {
+        slotStart,
+        slotEnd,
+        leadName,
+        leadEmail,
+        leadPhone,
+        leadId,
+        fbp,
+        fbc,
+        event_source_url,
+        utm_source,
+        utm_campaign,
+        utm_content,
+      } = body;
 
       if (!slotStart || !slotEnd || !leadName || !leadEmail) {
         return new Response(
@@ -326,6 +388,8 @@ serve(async (req: Request) => {
         updated_at: new Date().toISOString(),
       };
 
+      let confirmedLeadId: string | null = leadId || null;
+
       if (leadId) {
         await supabase.from("leads").update(updatePayload).eq("id", leadId);
       } else if (leadEmail) {
@@ -339,36 +403,76 @@ serve(async (req: Request) => {
           .limit(1);
 
         if (existingLeads && existingLeads.length > 0) {
-          await supabase.from("leads").update(updatePayload).eq("id", existingLeads[0].id);
+          confirmedLeadId = existingLeads[0].id;
+          await supabase.from("leads").update(updatePayload).eq("id", confirmedLeadId);
         } else {
           // No existing lead — create one
-          await supabase.from("leads").insert({
-            name: leadName,
-            email: leadEmail,
-            phone: leadPhone || null,
-            ...updatePayload,
-            opted_in_at: new Date().toISOString(),
-            last_contact_at: new Date().toISOString(),
-            proposal_sent: false,
-          });
+          const { data: insertedLead } = await supabase
+            .from("leads")
+            .insert({
+              name: leadName,
+              email: leadEmail,
+              phone: leadPhone || null,
+              fbp: fbp || null,
+              fbc: fbc || null,
+              event_source_url: event_source_url || null,
+              utm_source: utm_source || null,
+              utm_campaign: utm_campaign || null,
+              utm_content: utm_content || null,
+              ...updatePayload,
+              opted_in_at: new Date().toISOString(),
+              last_contact_at: new Date().toISOString(),
+              proposal_sent: false,
+            })
+            .select("id")
+            .single();
+          confirmedLeadId = insertedLead?.id || null;
         }
       }
 
-      // Trigger confirmation email via mailer.py (fire-and-forget via Supabase DB flag)
-      // We set a flag on the lead that the heartbeat/cron picks up, or call directly
-      // For now: store confirmed_at so mailer.py reminders logic can send confirmation
-      const confirmedLeadId = leadId || (await (async () => {
+      if (!confirmedLeadId && leadEmail) {
         const { data } = await supabase
           .from("leads").select("id").eq("email", leadEmail)
           .eq("booking_completed", true).order("updated_at", { ascending: false }).limit(1);
-        return data?.[0]?.id;
-      })());
+        confirmedLeadId = data?.[0]?.id || null;
+      }
 
       if (confirmedLeadId) {
-        // Mark booked_at so mailer.py send_confirmation can be triggered
+        const bookedAt = new Date().toISOString();
+        const purchaseEventId = buildPurchaseEventId(confirmedLeadId, slotStart);
+
+        // Mark booked_at so mailer.py send_confirmation can be triggered,
+        // and persist the event id so the browser pixel can assist with dedupe.
         await supabase.from("leads").update({
-          booked_at: new Date().toISOString(),
-        }).eq("id", confirmedLeadId).is("booked_at", null);
+          booked_at: bookedAt,
+          purchase_event_id: purchaseEventId,
+          meta_purchase_status: "pending",
+          meta_purchase_error: null,
+        }).eq("id", confirmedLeadId);
+
+        const { data: leadForMeta } = await supabase
+          .from("leads")
+          .select("id, email, phone, fbp, fbc, event_source_url, utm_source, utm_campaign, utm_content")
+          .eq("id", confirmedLeadId)
+          .single();
+
+        if (leadForMeta) {
+          try {
+            await sendMetaPurchase(leadForMeta, slotStart);
+            await supabase.from("leads").update({
+              meta_purchase_status: "sent",
+              meta_purchase_sent_at: new Date().toISOString(),
+              meta_purchase_error: null,
+            }).eq("id", confirmedLeadId);
+          } catch (metaError) {
+            const message = metaError instanceof Error ? metaError.message : String(metaError);
+            console.error("Meta purchase send failed after booking:", metaError);
+            await supabase.from("leads").update({
+              meta_purchase_status: "failed",
+              meta_purchase_error: message.slice(0, 1000),
+            }).eq("id", confirmedLeadId);
+          }
+        }
       }
 
       return new Response(
