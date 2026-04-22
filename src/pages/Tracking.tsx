@@ -49,6 +49,7 @@ function fmtPct(numerator: number, denominator: number) {
 
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
+  const [bookedLeads, setBookedLeads] = React.useState<{ created_at: string; stage: string }[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
@@ -65,11 +66,17 @@ export default function Tracking() {
         const sinceIso = since.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
-        const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant`, { headers })
+        const [eventsRes, leadsRes] = await Promise.all([
+          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant`, { headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage&order=created_at.asc`, { headers }),
+        ])
         const eventsJson = await eventsRes.json()
+        const leadsJson = await leadsRes.json()
         setEvents(Array.isArray(eventsJson) ? eventsJson : [])
+        setBookedLeads(Array.isArray(leadsJson) ? leadsJson : [])
       } catch {
         setEvents([])
+        setBookedLeads([])
       }
       setLoading(false)
     }
@@ -79,12 +86,11 @@ export default function Tracking() {
   const landingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/')
   const bookingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/book')
   const leadCaptures = events.filter(e => e.event_type === 'lead_capture')
-  const bookingsCompleted = events.filter(e => e.event_type === 'booking_completed')
 
   const totalVisits = landingViews.length
   const totalBookPageViews = bookingViews.length
   const totalLeads = leadCaptures.length
-  const totalBooked = bookingsCompleted.length
+  const totalBooked = bookedLeads.length // from leads table, excludes spam/test
 
   const now = new Date()
   const daily = Array.from({ length: 30 }, (_, idx) => {
@@ -93,7 +99,7 @@ export default function Tracking() {
     const key = dateKey(day)
     const visits = landingViews.filter(event => event.created_at.slice(0, 10) === key).length
     const leads = leadCaptures.filter(event => event.created_at.slice(0, 10) === key).length
-    const booked = bookingsCompleted.filter(event => event.created_at.slice(0, 10) === key).length
+    const booked = bookedLeads.filter(lead => lead.created_at.slice(0, 10) === key).length
     return { label: key.slice(5), visits, leads, booked }
   })
 
