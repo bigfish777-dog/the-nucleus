@@ -6,101 +6,13 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const META_CONVERSION_URL = `${SUPABASE_URL}/functions/v1/meta-conversion`;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
-
-const PIXEL_ID = "1427972831789819";
-const META_TOKEN = Deno.env.get("META_TOKEN") || "";
-
-async function sha256Hash(value: string): Promise<string> {
-  const data = new TextEncoder().encode(value.toLowerCase().trim());
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function sendMetaPurchase({
-  email,
-  phone,
-  eventId,
-  eventSourceUrl,
-  userAgent,
-  fbclid,
-  fbp,
-  fbc,
-  utm_source,
-  utm_campaign,
-  utm_content,
-  custom_params,
-}: {
-  email?: string;
-  phone?: string;
-  eventId: string;
-  eventSourceUrl?: string;
-  userAgent?: string;
-  fbclid?: string;
-  fbp?: string;
-  fbc?: string;
-  utm_source?: string;
-  utm_campaign?: string;
-  utm_content?: string;
-  custom_params?: Record<string, unknown>;
-}) {
-  if (!META_TOKEN) {
-    return { skipped: true, reason: "META_TOKEN not configured" };
-  }
-
-  const hashedEmail = email ? await sha256Hash(email) : undefined;
-  const hashedPhone = phone ? await sha256Hash(phone.replace(/\s+/g, "").replace(/^\+/, "")) : undefined;
-
-  const payload = {
-    data: [
-      {
-        event_name: "Purchase",
-        event_time: Math.floor(Date.now() / 1000),
-        event_id: eventId,
-        action_source: "website",
-        event_source_url: eventSourceUrl || "https://book.testtubemarketing.com",
-        user_data: {
-          ...(hashedEmail && { em: [hashedEmail] }),
-          ...(hashedPhone && { ph: [hashedPhone] }),
-          ...(fbclid && { fbclid }),
-          ...(fbp && { fbp }),
-          ...(fbc && { fbc }),
-          ...(userAgent && { client_user_agent: userAgent }),
-        },
-        custom_data: {
-          currency: "GBP",
-          value: 1,
-          ...(utm_source && { utm_source }),
-          ...(utm_campaign && { utm_campaign }),
-          ...(utm_content && { utm_content }),
-          ...(custom_params || {}),
-        },
-      },
-    ],
-  };
-
-  const response = await fetch(
-    `https://graph.facebook.com/v19.0/${PIXEL_ID}/events?access_token=${META_TOKEN}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }
-  );
-
-  const result = await response.json();
-
-  if (!response.ok) {
-    throw new Error(JSON.stringify(result));
-  }
-
-  return result;
-}
 
 // Nick's availability rules
 const AVAILABILITY_CONFIG = {
@@ -114,6 +26,53 @@ const AVAILABILITY_CONFIG = {
   minNoticeHours: 24,
   maxWorkingDaysAhead: 4,
 };
+
+function buildPurchaseEventId(leadId: string, slotStart: string): string {
+  return `purchase_${leadId}_${slotStart}`;
+}
+
+async function sendMetaPurchase(lead: {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  fbp?: string | null;
+  fbc?: string | null;
+  event_source_url?: string | null;
+  utm_source?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+}, slotStart: string) {
+  const eventId = buildPurchaseEventId(lead.id, slotStart);
+  const response = await fetch(META_CONVERSION_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      eventName: "Purchase",
+      eventId,
+      eventTime: Math.floor(Date.now() / 1000),
+      eventSourceUrl: lead.event_source_url || "https://book.testtubemarketing.com",
+      email: lead.email,
+      phone: lead.phone,
+      fbp: lead.fbp || undefined,
+      fbc: lead.fbc || undefined,
+      externalId: lead.id,
+      utm_source: lead.utm_source || undefined,
+      utm_campaign: lead.utm_campaign || undefined,
+      utm_content: lead.utm_content || undefined,
+      custom_params: {
+        lead_id: lead.id,
+        booking_slot_start: slotStart,
+      },
+    }),
+  });
+
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Meta purchase send failed: ${JSON.stringify(result)}`);
+  }
+
+  return { eventId, result };
+}
 
 async function getValidAccessToken(supabase: any): Promise<string> {
   const { data: tokenRow, error } = await supabase
@@ -336,7 +295,20 @@ serve(async (req: Request) => {
     // POST /book
     if (req.method === "POST" && path.endsWith("/book")) {
       const body = await req.json();
-      const { slotStart, slotEnd, leadName, leadEmail, leadPhone, leadId } = body;
+      const {
+        slotStart,
+        slotEnd,
+        leadName,
+        leadEmail,
+        leadPhone,
+        leadId,
+        fbp,
+        fbc,
+        event_source_url,
+        utm_source,
+        utm_campaign,
+        utm_content,
+      } = body;
 
       if (!slotStart || !slotEnd || !leadName || !leadEmail) {
         return new Response(
@@ -408,25 +380,15 @@ serve(async (req: Request) => {
 
       // Update lead record with event ID and confirmed stage
       // Try by leadId first, fall back to email lookup
-      const leadTrackingFields = {
-        utm_source: body.utm_source || null,
-        utm_medium: body.utm_medium || null,
-        utm_campaign: body.utm_campaign || null,
-        utm_content: body.utm_content || null,
-        fbclid: body.fbclid || null,
-        fbp: body.fbp || null,
-        fbc: body.fbc || null,
-        event_source_url: body.event_source_url || "https://book.testtubemarketing.com",
-      };
-
       const updatePayload = {
         google_event_id: calData.id,
         call_datetime: slotStart,
         stage: "booked",
         booking_completed: true,
         updated_at: new Date().toISOString(),
-        ...leadTrackingFields,
       };
+
+      let confirmedLeadId: string | null = leadId || null;
 
       if (leadId) {
         await supabase.from("leads").update(updatePayload).eq("id", leadId);
@@ -441,84 +403,73 @@ serve(async (req: Request) => {
           .limit(1);
 
         if (existingLeads && existingLeads.length > 0) {
-          await supabase.from("leads").update(updatePayload).eq("id", existingLeads[0].id);
+          confirmedLeadId = existingLeads[0].id;
+          await supabase.from("leads").update(updatePayload).eq("id", confirmedLeadId);
         } else {
           // No existing lead — create one
-          await supabase.from("leads").insert({
-            name: leadName,
-            email: leadEmail,
-            phone: leadPhone || null,
-            ...updatePayload,
-            opted_in_at: new Date().toISOString(),
-            last_contact_at: new Date().toISOString(),
-            proposal_sent: false,
-          });
+          const { data: insertedLead } = await supabase
+            .from("leads")
+            .insert({
+              name: leadName,
+              email: leadEmail,
+              phone: leadPhone || null,
+              fbp: fbp || null,
+              fbc: fbc || null,
+              event_source_url: event_source_url || null,
+              utm_source: utm_source || null,
+              utm_campaign: utm_campaign || null,
+              utm_content: utm_content || null,
+              ...updatePayload,
+              opted_in_at: new Date().toISOString(),
+              last_contact_at: new Date().toISOString(),
+              proposal_sent: false,
+            })
+            .select("id")
+            .single();
+          confirmedLeadId = insertedLead?.id || null;
         }
       }
 
-      // Trigger confirmation email via mailer.py (fire-and-forget via Supabase DB flag)
-      // We set a flag on the lead that the heartbeat/cron picks up, or call directly
-      // For now: store confirmed_at so mailer.py reminders logic can send confirmation
-      const confirmedLeadId = leadId || (await (async () => {
+      if (!confirmedLeadId && leadEmail) {
         const { data } = await supabase
           .from("leads").select("id").eq("email", leadEmail)
           .eq("booking_completed", true).order("updated_at", { ascending: false }).limit(1);
-        return data?.[0]?.id;
-      })());
-
-      let metaPurchaseResult: any = null;
+        confirmedLeadId = data?.[0]?.id || null;
+      }
 
       if (confirmedLeadId) {
         const bookedAt = new Date().toISOString();
+        const purchaseEventId = buildPurchaseEventId(confirmedLeadId, slotStart);
 
-        const { data: bookedLead } = await supabase
+        // Mark booked_at so mailer.py send_confirmation can be triggered,
+        // and persist the event id so the browser pixel can assist with dedupe.
+        await supabase.from("leads").update({
+          booked_at: bookedAt,
+          purchase_event_id: purchaseEventId,
+          meta_purchase_status: "pending",
+          meta_purchase_error: null,
+        }).eq("id", confirmedLeadId);
+
+        const { data: leadForMeta } = await supabase
           .from("leads")
-          .select("id,email,phone,utm_source,utm_campaign,utm_content,fbclid,fbp,fbc,event_source_url,purchase_event_id,meta_purchase_sent_at")
+          .select("id, email, phone, fbp, fbc, event_source_url, utm_source, utm_campaign, utm_content")
           .eq("id", confirmedLeadId)
           .single();
 
-        let purchaseEventId = bookedLead?.purchase_event_id;
-        if (!purchaseEventId) {
-          purchaseEventId = crypto.randomUUID();
-        }
-
-        await supabase
-          .from("leads")
-          .update({
-            booked_at: bookedAt,
-            purchase_event_id: purchaseEventId,
-          })
-          .eq("id", confirmedLeadId);
-
-        if (!bookedLead?.meta_purchase_sent_at) {
+        if (leadForMeta) {
           try {
-            metaPurchaseResult = await sendMetaPurchase({
-              email: bookedLead?.email || leadEmail,
-              phone: bookedLead?.phone || leadPhone,
-              eventId: purchaseEventId,
-              eventSourceUrl: bookedLead?.event_source_url || body.event_source_url,
-              userAgent: req.headers.get("user-agent") || "",
-              fbclid: bookedLead?.fbclid || body.fbclid,
-              fbp: bookedLead?.fbp || body.fbp,
-              fbc: bookedLead?.fbc || body.fbc,
-              utm_source: bookedLead?.utm_source || body.utm_source,
-              utm_campaign: bookedLead?.utm_campaign || body.utm_campaign,
-              utm_content: bookedLead?.utm_content || body.utm_content,
-              custom_params: {
-                hook: body.hook || "",
-                adset: body.adset || "",
-              },
-            });
-
+            await sendMetaPurchase(leadForMeta, slotStart);
             await supabase.from("leads").update({
+              meta_purchase_status: "sent",
               meta_purchase_sent_at: new Date().toISOString(),
-              meta_purchase_response: metaPurchaseResult,
+              meta_purchase_error: null,
             }).eq("id", confirmedLeadId);
-          } catch (metaErr: any) {
+          } catch (metaError) {
+            const message = metaError instanceof Error ? metaError.message : String(metaError);
+            console.error("Meta purchase send failed after booking:", metaError);
             await supabase.from("leads").update({
-              meta_purchase_response: {
-                error: metaErr?.message || String(metaErr),
-              },
+              meta_purchase_status: "failed",
+              meta_purchase_error: message.slice(0, 1000),
             }).eq("id", confirmedLeadId);
           }
         }
@@ -532,7 +483,6 @@ serve(async (req: Request) => {
           start: slotStart,
           end: slotEnd,
           leadId: confirmedLeadId,
-          metaPurchaseSent: Boolean(metaPurchaseResult && !metaPurchaseResult.skipped),
         }),
         {
           status: 201,

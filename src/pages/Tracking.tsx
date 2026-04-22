@@ -35,6 +35,7 @@ type TrackingEvent = {
   utm_content?: string | null
   session_id: string
   event_type: 'page_view' | 'lead_capture' | 'booking_completed'
+  variant?: 'a' | 'b' | null
 }
 
 function dateKey(date: Date) {
@@ -43,11 +44,12 @@ function dateKey(date: Date) {
 
 function fmtPct(numerator: number, denominator: number) {
   if (!denominator) return '0%'
-  return `${Math.round((numerator / denominator) * 100)}%`
+  return `${((numerator / denominator) * 100).toFixed(1)}%`
 }
 
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
+  const [bookedLeads, setBookedLeads] = React.useState<{ created_at: string; stage: string }[]>([])
   const [loading, setLoading] = React.useState(true)
 
   React.useEffect(() => {
@@ -64,11 +66,17 @@ export default function Tracking() {
         const sinceIso = since.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
-        const eventsRes = await fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type`, { headers })
+        const [eventsRes, leadsRes] = await Promise.all([
+          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant`, { headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage&order=created_at.asc`, { headers }),
+        ])
         const eventsJson = await eventsRes.json()
+        const leadsJson = await leadsRes.json()
         setEvents(Array.isArray(eventsJson) ? eventsJson : [])
+        setBookedLeads(Array.isArray(leadsJson) ? leadsJson : [])
       } catch {
         setEvents([])
+        setBookedLeads([])
       }
       setLoading(false)
     }
@@ -78,12 +86,11 @@ export default function Tracking() {
   const landingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/')
   const bookingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/book')
   const leadCaptures = events.filter(e => e.event_type === 'lead_capture')
-  const bookingsCompleted = events.filter(e => e.event_type === 'booking_completed')
 
   const totalVisits = landingViews.length
   const totalBookPageViews = bookingViews.length
   const totalLeads = leadCaptures.length
-  const totalBooked = bookingsCompleted.length
+  const totalBooked = bookedLeads.length // from leads table, excludes spam/test
 
   const now = new Date()
   const daily = Array.from({ length: 30 }, (_, idx) => {
@@ -92,7 +99,7 @@ export default function Tracking() {
     const key = dateKey(day)
     const visits = landingViews.filter(event => event.created_at.slice(0, 10) === key).length
     const leads = leadCaptures.filter(event => event.created_at.slice(0, 10) === key).length
-    const booked = bookingsCompleted.filter(event => event.created_at.slice(0, 10) === key).length
+    const booked = bookedLeads.filter(lead => lead.created_at.slice(0, 10) === key).length
     return { label: key.slice(5), visits, leads, booked }
   })
 
@@ -193,6 +200,117 @@ export default function Tracking() {
           </table>
         </div>
       </Card>
+
+      <ABTestPanel events={events} loading={loading} />
+    </div>
+  )
+}
+
+function ABTestPanel({ events, loading }: { events: TrackingEvent[]; loading: boolean }) {
+  const green = '#22C55E'
+
+  const variantEvents = events.filter(e => e.variant === 'a' || e.variant === 'b')
+  const hasData = variantEvents.length > 0
+
+  function variantStats(v: 'a' | 'b') {
+    const vEvents = events.filter(e => e.variant === v)
+    const visits = vEvents.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
+    const leads = vEvents.filter(e => e.event_type === 'lead_capture').length
+    const booked = vEvents.filter(e => e.event_type === 'booking_completed').length
+    return { visits, leads, booked }
+  }
+
+  const a = variantStats('a')
+  const b = variantStats('b')
+
+  const winner = (aVal: number, bVal: number, denom: number) => {
+    if (!denom) return null
+    const aPct = aVal / denom
+    const bPct = bVal / denom
+    if (aPct === bPct) return null
+    return aPct > bPct ? 'a' : 'b'
+  }
+
+  const leadWinner = winner(a.leads, b.leads, a.visits + b.visits)
+  const bookWinner = winner(a.booked, b.booked, a.leads + b.leads)
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>A/B Split Test</p>
+          <p className="text-xs mt-0.5" style={{ color: muted }}>Variant A (original) vs Variant B (questions-first funnel) · 70/30 split</p>
+        </div>
+        <span style={{
+          fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
+          background: hasData ? 'rgba(34,197,94,0.12)' : 'rgba(136,145,168,0.12)',
+          color: hasData ? green : muted,
+          border: `1px solid ${hasData ? 'rgba(34,197,94,0.25)' : 'rgba(136,145,168,0.2)'}`,
+          letterSpacing: '0.08em',
+        }}>
+          {hasData ? '● LIVE' : '○ AWAITING DATA'}
+        </span>
+      </div>
+
+      {!hasData && !loading && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: muted, fontSize: 13 }}>
+          <p style={{ fontSize: 24, marginBottom: 8 }}>🧪</p>
+          <p style={{ fontWeight: 600, color: white, marginBottom: 4 }}>No split test data yet</p>
+          <p>Once Variant B is live and traffic comes in, results will appear here automatically.</p>
+        </div>
+      )}
+
+      {loading && (
+        <div style={{ textAlign: 'center', padding: '32px 0', color: muted, fontSize: 13 }}>Loading…</div>
+      )}
+
+      {hasData && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {(['a', 'b'] as const).map(v => {
+            const stats = v === 'a' ? a : b
+            const label = v === 'a' ? 'Variant A — Original' : 'Variant B — Questions First'
+            const accent = v === 'a' ? teal : pink
+            const isLeadWin = leadWinner === v
+            const isBookWin = bookWinner === v
+
+            return (
+              <div key={v} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 16, border: `1px solid ${border}` }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{label}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <StatRow label="Booking page visits" value={String(stats.visits)} />
+                  <StatRow
+                    label="Leads captured"
+                    value={`${stats.leads} (${fmtPct(stats.leads, stats.visits)})`}
+                    highlight={isLeadWin}
+                  />
+                  <StatRow
+                    label="Calls booked"
+                    value={`${stats.booked} (${fmtPct(stats.booked, stats.leads)})`}
+                    highlight={isBookWin}
+                  />
+                  <StatRow
+                    label="Visit → booked"
+                    value={fmtPct(stats.booked, stats.visits)}
+                    highlight={isLeadWin && isBookWin}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+function StatRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
+  const green = '#22C55E'
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
+      <span style={{ color: muted }}>{label}</span>
+      <span style={{ fontWeight: 700, color: highlight ? green : white }}>
+        {highlight && <span style={{ marginRight: 4 }}>🏆</span>}{value}
+      </span>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import CreativeLibrary from './pages/CreativeLibrary'
 import CreativeProduction from './pages/CreativeProduction'
 import Tracking from './pages/Tracking'
 import Settings from './pages/Settings'
+import Proposals from './pages/Proposals'
 import Login, { isAuthenticated } from './pages/Login'
 import './index.css'
 
@@ -49,6 +50,7 @@ export default function App() {
             <Route path="/creative-production" element={<CreativeProduction />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/proposals" element={<Proposals />} />
           </Routes>
         </main>
       </div>

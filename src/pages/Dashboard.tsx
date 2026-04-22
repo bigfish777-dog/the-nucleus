@@ -15,17 +15,8 @@ const muted = '#8891A8'
 const border = 'rgba(255,255,255,0.08)'
 const surface = '#161B27'
 const green = '#22C55E'
-const DASHBOARD_OVERRIDES = {
-	callsBookedTotal: 49,
-	overallShowRate: 59,
-	liveProposals: 8,
-	revenueThisMonth: 0,
-	revenueQuarter: 0,
-	totalRevenueClosed: 38805,
-	totalDealsClosed: 6,
-	costPerCall: 191,
-	costPerProposal: 467
-}
+// DASHBOARD_OVERRIDES removed — all metrics now computed live from lead data
+// Historical leads back-filled via automations/backfill-helper.ts
 
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -55,9 +46,8 @@ function MetricCard({ label, value, sub, trend, color = '#F0F2F8' }: {
 
 // ─── Computed metrics ───────────────────────────────────────────────────────
 const leads = SEED_LEADS
-const now = new Date('2026-03-22')
 // These seed-level constants are superseded by live calendar-week calculations in the component
-const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','closed_won','closed_lost'].includes(l.stage)).length
+const showed = leads.filter(l => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
 const allBooked = leads.filter(l => l.booking_completed).length
 const showRate = allBooked ? Math.round((showed / allBooked) * 100) : 0
 
@@ -69,10 +59,7 @@ const last4WeeksSpend = SEED_AD_PERFORMANCE
 // ─── Alerts ──────────────────────────────────────────────────────────────────
 
 // ─── Upcoming calls ───────────────────────────────────────────────────────────
-const upcomingCalls = leads
-  .filter(l => l.call_datetime && new Date(l.call_datetime) >= now && l.stage === 'booked')
-  .sort((a, b) => new Date(a.call_datetime!).getTime() - new Date(b.call_datetime!).getTime())
-  .slice(0, 6)
+// Computed inside component using realNow and activeLeadsData
 
 // ─── Chart data ───────────────────────────────────────────────────────────────
 // 12-week weekly trend
@@ -91,6 +78,7 @@ type Timeframe = '4w' | '8w' | '12w'
 export default function Dashboard() {
   const [timeframe, setTimeframe] = useState<Timeframe>('12w')
   const tfWeeks = timeframe === '4w' ? 4 : timeframe === '8w' ? 8 : 12
+  const [showAllTime, setShowAllTime] = useState(true)
   const [liveLeads, setLiveLeads] = React.useState<Lead[] | null>(null)
   React.useEffect(() => {
     async function load() {
@@ -105,10 +93,10 @@ export default function Dashboard() {
 
   // Use live data if available, filter out spam/test from all metrics
   // Exclude spam/test stages AND internal test email addresses
-  const activeLeadsData = (liveLeads || leads).filter((l: Lead) => 
-    !['spam','test'].includes(l.stage) && 
+  const activeLeadsData = (liveLeads || leads).filter((l: Lead) =>
+    !['spam','test'].includes(l.stage) &&
     !l.email?.includes('@testtubemarketing.com') &&
-    isLeadInNewFunnel(l)
+    (showAllTime || isLeadInNewFunnel(l))
   )
 
   // ── Consistent date boundaries ────────────────────────────────────────────
@@ -135,40 +123,61 @@ export default function Dashboard() {
     !['abandoned', 'spam', 'test'].includes(l.stage) &&
     ((l.call_datetime || '') >= mgcStart || (l.booked_at || '') >= mgcStart)
   ).length
-  const liveShowed = activeLeadsData.filter((l: Lead) => ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
+  const liveShowed = activeLeadsData.filter((l: Lead) => ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)).length
   const liveShowRateRaw = liveAllBooked ? Math.round((liveShowed / liveAllBooked) * 100) : 0
   // Revenue this month — use the first day of current month dynamically
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  const firstOfMonth = new Date(realNow.getFullYear(), realNow.getMonth(), 1).toISOString()
   // Use last_contact_at as close date (stored there to avoid auto-update trigger overwriting)
   const liveRevThisMonthRaw = activeLeadsData.filter((l: Lead) => l.revenue && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfMonth).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
-  // Exclude Michael O'Reilly (referral) from ad-attributed revenue on ROAS calc
-  // Revenue closed = ALL TIME total from closed won leads
-  const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // Revenue this quarter
+  const currentQuarter = Math.floor(realNow.getMonth() / 3)
+  const firstOfQuarter = new Date(realNow.getFullYear(), currentQuarter * 3, 1).toISOString()
+  const liveRevQRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won' && l.last_contact_at && l.last_contact_at >= firstOfQuarter).reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
+  // All-time revenue (for ROAS and total closed card)
+  const liveRevAllTimeRaw = activeLeadsData.filter((l: Lead) => l.revenue && Number(l.revenue) > 0 && l.stage === 'closed_won').reduce((s: number, l: Lead) => s + (Number(l.revenue) || 0), 0)
   const liveTotalLeads = activeLeadsData.length
-  const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => Number(l.proposal_value) > 0).length
+  // Currently awaiting decision (for "Live proposals" card)
+  const liveProposalsSentRaw = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage)).length
+  const liveProposalsTotalValue = activeLeadsData.filter((l: Lead) => ['proposal_sent', 'proposal_live'].includes(l.stage) && Number(l.proposal_value) > 0).reduce((s: number, l: Lead) => s + Number(l.proposal_value), 0)
+  // Total ever sent (for funnel conversion rates and cost per proposal)
+  const liveTotalProposalsSent = activeLeadsData.filter((l: Lead) =>
+    ['proposal_sent', 'proposal_live', 'closed_won', 'closed_lost'].includes(l.stage) && Number(l.proposal_value) > 0
+  ).length
   const [liveSpend28d, setLiveSpend28d] = React.useState(0)
+  const [liveAdPerfRows, setLiveAdPerfRows] = React.useState<{date: string, spend: number}[]>([])
   React.useEffect(() => {
-    // Load ALL time ad spend for accurate cost per call
-    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?select=spend&limit=500`, {
+    // Load ALL time ad spend with dates for charts
+    fetch(`${import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'}/rest/v1/ad_performance_daily?select=date,spend&limit=1000`, {
       headers: { apikey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s', Authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s' }
-    }).then(r => r.json()).then(rows => setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))).catch(() => {})
+    }).then(r => r.json()).then(rows => {
+      setLiveSpend28d(rows.reduce((s: number, r: {spend: number}) => s + (r.spend||0), 0))
+      setLiveAdPerfRows(rows)
+    }).catch(() => {})
   }, [])
   const liveCostPerCallRaw = liveAllBooked ? Math.round((liveSpend28d || last4WeeksSpend) / liveAllBooked) : 0
   const liveClosedWonRaw = activeLeadsData.filter((l: Lead) => l.stage === 'closed_won').length
-  const liveAllBookedDisplay = DASHBOARD_OVERRIDES.callsBookedTotal ?? liveAllBooked
-  const liveShowRate = DASHBOARD_OVERRIDES.overallShowRate ?? liveShowRateRaw
-  const liveRevThisMonth = DASHBOARD_OVERRIDES.revenueThisMonth ?? liveRevThisMonthRaw
-  const liveRevQ = DASHBOARD_OVERRIDES.revenueQuarter ?? liveRevQRaw
-  const liveProposalsSent = DASHBOARD_OVERRIDES.liveProposals ?? liveProposalsSentRaw
-  const liveClosedWon = DASHBOARD_OVERRIDES.totalDealsClosed ?? liveClosedWonRaw
-  const liveTotalRevenueClosed = DASHBOARD_OVERRIDES.totalRevenueClosed ?? liveRevQRaw
-  const liveCostPerCall = DASHBOARD_OVERRIDES.costPerCall ?? liveCostPerCallRaw
-  const liveCostPerProposal = DASHBOARD_OVERRIDES.costPerProposal ?? (liveProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveProposalsSent) : 0)
+  const liveAllBookedDisplay = liveAllBooked
+  const liveShowRate = liveShowRateRaw
+  const liveRevThisMonth = liveRevThisMonthRaw
+  const liveRevQ = liveRevQRaw
+  const liveRevAllTime = liveRevAllTimeRaw
+  const liveProposalsSent = liveProposalsSentRaw
+  const liveClosedWon = liveClosedWonRaw
+  const liveTotalRevenueClosed = liveRevAllTimeRaw
+  const liveCostPerCall = liveCostPerCallRaw
+  const liveCostPerProposal = liveTotalProposalsSent ? Math.round((liveSpend28d || last4WeeksSpend) / liveTotalProposalsSent) : 0
+  const liveROAS = liveSpend28d && liveRevAllTime ? (liveRevAllTime / liveSpend28d).toFixed(1) : null
   // Live flags from Supabase data
-  const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < now)
-  const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (now.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
-  const liveNoContact = activeLeadsData.filter((l: Lead) => l.last_contact_at && (now.getTime() - new Date(l.last_contact_at).getTime()) > 14 * 86400000 && !['closed_won','closed_lost','abandoned','spam','test','no_show','disqualified'].includes(l.stage))
-  const liveUpcomingSecond = activeLeadsData.filter((l: Lead) => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= now)
+  const liveOverdue = activeLeadsData.filter((l: Lead) => l.stage === 'booked' && !!l.call_datetime && new Date(l.call_datetime) < realNow)
+  const liveStaleProposals = activeLeadsData.filter((l: Lead) => l.stage === 'proposal_sent' && l.proposal_sent_at && (realNow.getTime() - new Date(l.proposal_sent_at).getTime()) > 7 * 86400000)
+  const liveNoContact = activeLeadsData.filter((l: Lead) => l.last_contact_at && (realNow.getTime() - new Date(l.last_contact_at).getTime()) > 14 * 86400000 && !['closed_won','closed_lost','abandoned','spam','test','no_show','disqualified','showed'].includes(l.stage))
+  const liveUpcomingSecond = activeLeadsData.filter((l: Lead) => l.stage === 'second_call_booked' && l.second_call_datetime && new Date(l.second_call_datetime) >= realNow)
+
+  // ── Upcoming calls (next 7 days) ──
+  const upcomingCalls = activeLeadsData
+    .filter(l => l.call_datetime && new Date(l.call_datetime) >= realNow && l.stage === 'booked')
+    .sort((a, b) => new Date(a.call_datetime!).getTime() - new Date(b.call_datetime!).getTime())
+    .slice(0, 6)
 
   // ── Live chart data (recalculated when liveLeads or timeframe changes) ────
   // Chart weeks: calendar weeks (Mon–Sun), W1 = oldest, W12 = current week
@@ -185,14 +194,15 @@ export default function Dashboard() {
     const qual = activeLeadsData.filter((l: Lead) => {
       const d = l.last_contact_at || l.call_datetime
       return d && d >= wStartISO && d < wEndISO &&
-        ['qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)
+        ['showed','qualified','second_call_booked','proposal_sent','proposal_live','closed_won','closed_lost'].includes(l.stage)
     }).length
     // Proposals: use proposal_sent_at
     const props = activeLeadsData.filter((l: Lead) =>
       l.proposal_sent_at && l.proposal_sent_at >= wStartISO && l.proposal_sent_at < wEndISO
     ).length
-    const spend = SEED_AD_PERFORMANCE.filter(p => p.date >= wStartISO.slice(0,10) && p.date < wEndISO.slice(0,10))
-      .reduce((s, p) => s + p.spend, 0)
+    const spendSource = liveAdPerfRows.length > 0 ? liveAdPerfRows : SEED_AD_PERFORMANCE
+    const spend = spendSource.filter(p => p.date >= wStartISO.slice(0,10) && p.date < wEndISO.slice(0,10))
+      .reduce((s, p) => s + (p.spend||0), 0)
     return { label: `W${tfWeeks-i}`, booked, qual, props, spend: Math.round(spend) }
   }).reverse()
 
@@ -200,7 +210,7 @@ export default function Dashboard() {
   const liveSpendRevenueData = weeklyChartData.map(w => {
     // Match revenue to week using last_contact_at of closed_won leads
     const weekIdx = weeklyChartData.indexOf(w)
-    const wEnd = new Date(now); wEnd.setDate(wEnd.getDate() - (tfWeeks - weekIdx - 1) * 7)
+    const wEnd = new Date(realNow); wEnd.setDate(wEnd.getDate() - (tfWeeks - weekIdx - 1) * 7)
     const wStart = new Date(wEnd); wStart.setDate(wStart.getDate() - 7)
     const rev = activeLeadsData
       .filter((l: Lead) => l.stage === 'closed_won' && l.revenue && l.last_contact_at &&
@@ -220,16 +230,29 @@ export default function Dashboard() {
     { stage: 'Leads', count: liveTotalLeads, pct: 100, color: teal },
     { stage: 'Calls Booked', count: liveAllBooked, pct: liveTotalLeads ? Math.round(liveAllBooked/liveTotalLeads*100) : 0, color: teal },
     { stage: 'Attended', count: liveShowed, pct: liveAllBooked ? Math.round(liveShowed/liveAllBooked*100) : 0, color: amber },
-    { stage: 'Proposals Sent', count: liveProposalsSent, pct: liveShowed ? Math.round(liveProposalsSent/liveShowed*100) : 0, color: pink },
-    { stage: 'Closed Won', count: liveClosedWon, pct: liveProposalsSent ? Math.round(liveClosedWon/liveProposalsSent*100) : 0, color: '#22C55E' },
+    { stage: 'Proposals Sent', count: liveTotalProposalsSent, pct: liveShowed ? Math.round(liveTotalProposalsSent/liveShowed*100) : 0, color: pink },
+    { stage: 'Closed Won', count: liveClosedWon, pct: liveTotalProposalsSent ? Math.round(liveClosedWon/liveTotalProposalsSent*100) : 0, color: '#22C55E' },
   ]
 
   return (
     <div className="space-y-5">
-      <div>
-        <h1 className="text-xl font-bold" style={{ color: '#F0F2F8' }}>Dashboard</h1>
-        <p className="text-sm mt-0.5" style={{ color: muted }}>{now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
-        <p className="text-xs mt-1" style={{ color: muted }}>New funnel metrics from {new Date(NEW_FUNNEL_CUTOVER).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} onward</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold" style={{ color: '#F0F2F8' }}>Dashboard</h1>
+          <p className="text-sm mt-0.5" style={{ color: muted }}>{realNow.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          {!showAllTime && <p className="text-xs mt-1" style={{ color: muted }}>New funnel metrics from {new Date(NEW_FUNNEL_CUTOVER).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} onward</p>}
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {(['all', 'new'] as const).map(mode => {
+            const active = mode === 'all' ? showAllTime : !showAllTime
+            return (
+              <button key={mode} onClick={() => setShowAllTime(mode === 'all')}
+                style={{ padding: '5px 12px', borderRadius: 6, border: `1px solid ${active ? teal : border}`, background: active ? `${teal}15` : 'transparent', color: active ? teal : muted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                {mode === 'all' ? 'All time' : 'New funnel'}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* ── Metric cards ── */}
@@ -247,7 +270,7 @@ export default function Dashboard() {
           sub={`${liveAllBookedDisplay} calls booked total`}
           trend={showRate >= 70 ? 'up' : 'down'} />
         <MetricCard label="Live proposals" value={String(liveProposalsSent)}
-          sub="Awaiting decision" color={amber} />
+          sub={liveProposalsTotalValue > 0 ? `£${liveProposalsTotalValue.toLocaleString()} total value` : 'Awaiting decision'} color={amber} />
         <MetricCard label="Revenue this month" value={`£${liveRevThisMonth.toLocaleString()}`}
           sub={`£${liveRevQ.toLocaleString()} this quarter`} color={teal} trend="up" />
         <MetricCard label="Cost per call (all time)" value={`£${liveCostPerCall}`}
@@ -256,8 +279,8 @@ export default function Dashboard() {
           sub="Cost to reach proposal stage" />
         <MetricCard label="Total revenue closed" value={`£${liveTotalRevenueClosed.toLocaleString()}`}
           sub={`${liveClosedWon} deal${liveClosedWon !== 1 ? 's' : ''} closed`} color={teal} trend="up" />
-        <MetricCard label="Active creatives" value={String(SEED_CREATIVES.filter(c=>c.status==='active').length)}
-          sub={`${SEED_CREATIVES.filter(c=>c.status==='paused').length} paused`} />
+        <MetricCard label="Return on ad spend" value={liveROAS ? `${liveROAS}x` : '—'}
+          sub={liveROAS ? `£${liveRevAllTime.toLocaleString()} revenue · £${Math.round(liveSpend28d).toLocaleString()} spend` : 'Awaiting spend data'} color={teal} />
       </div>
 
       {/* ── Timeframe selector ── */}
@@ -364,7 +387,7 @@ export default function Dashboard() {
               {liveStaleProposals.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: `${amber}10`, border: `1px solid ${amber}25` }}>
                   <AlertCircle size={13} style={{ color: amber, flexShrink: 0, marginTop: 1 }} />
-                  <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — proposal {Math.floor((now.getTime()-new Date(l.proposal_sent_at!).getTime())/86400000)}d old with no update</p>
+                  <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — proposal {Math.floor((realNow.getTime()-new Date(l.proposal_sent_at!).getTime())/86400000)}d old with no update</p>
                 </div>
               ))}
               {liveUpcomingSecond.map(l => (
@@ -376,7 +399,7 @@ export default function Dashboard() {
               {liveNoContact.map(l => (
                 <div key={l.id} className="flex items-start gap-2.5 p-2.5 rounded-lg" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
                   <AlertCircle size={13} style={{ color: muted, flexShrink: 0, marginTop: 1 }} />
-                  <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — no contact in {Math.floor((now.getTime()-new Date(l.last_contact_at!).getTime())/86400000)}d</p>
+                  <p className="text-xs" style={{ color: '#F0F2F8' }}><strong>{l.name}</strong> — no contact in {Math.floor((realNow.getTime()-new Date(l.last_contact_at!).getTime())/86400000)}d</p>
                 </div>
               ))}
             </div>

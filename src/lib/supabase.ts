@@ -51,3 +51,30 @@ export async function fetchAdPerformance() {
     .order('date', { ascending: false })
   return { data, error }
 }
+
+export async function fetchCreativeProductionItems() {
+  const { data, error } = await supabase
+    .from('creative_production_items')
+    .select('*')
+    .order('created_at', { ascending: false })
+  return { data, error }
+}
+
+export async function upsertCreativeProductionItem(item: Record<string, unknown>) {
+  const { data, error } = await supabase
+    .from('creative_production_items')
+    .upsert(item, { onConflict: 'id' })
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function updateCreativeProductionStage(id: string, stage: string) {
+  const { data, error } = await supabase
+    .from('creative_production_items')
+    .update({ stage, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  return { data, error }
+}

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createHash } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 // TTM Pixel ID — primary pixel
 const PIXEL_ID = "1427972831789819";
@@ -17,6 +18,10 @@ async function sha256Hash(value: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
+function normalizePhone(value: string): string {
+  return value.replace(/\s+/g, "").replace(/^\+/, "");
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -29,17 +34,17 @@ serve(async (req: Request) => {
   try {
     const {
       eventName,
+      eventId,
+      eventTime,
+      eventSourceUrl,
       email,
       phone,
+      fbp,
+      fbc,
+      externalId,
       utm_source,
       utm_campaign,
       utm_content,
-      eventId,
-      eventSourceUrl,
-      fbclid,
-      fbp,
-      fbc,
-      testEventCode,
       custom_params,
     } = await req.json();
 
@@ -52,22 +57,23 @@ serve(async (req: Request) => {
 
     // Hash PII as required by Meta CAPI
     const hashedEmail = email ? await sha256Hash(email) : undefined;
-    const hashedPhone = phone ? await sha256Hash(phone.replace(/\s+/g, "").replace(/^\+/, "")) : undefined;
+    const hashedPhone = phone ? await sha256Hash(normalizePhone(phone)) : undefined;
+    const hashedExternalId = externalId ? await sha256Hash(externalId) : undefined;
 
-    const eventTime = Math.floor(Date.now() / 1000);
+    const resolvedEventTime = Number.isFinite(eventTime) ? Number(eventTime) : Math.floor(Date.now() / 1000);
 
     const payload = {
       data: [
         {
-          event_name: eventName || "Purchase",
-          event_time: eventTime,
-          ...(eventId && { event_id: eventId }),
+          event_name: eventName || "Schedule",
+          event_time: resolvedEventTime,
           action_source: "website",
           event_source_url: eventSourceUrl || "https://book.testtubemarketing.com",
+          ...(eventId && { event_id: eventId }),
           user_data: {
             ...(hashedEmail && { em: [hashedEmail] }),
             ...(hashedPhone && { ph: [hashedPhone] }),
-            ...(fbclid && { fbclid }),
+            ...(hashedExternalId && { external_id: [hashedExternalId] }),
             ...(fbp && { fbp }),
             ...(fbc && { fbc }),
             client_user_agent: req.headers.get("user-agent") || "",
@@ -78,11 +84,11 @@ serve(async (req: Request) => {
             ...(utm_source && { utm_source }),
             ...(utm_campaign && { utm_campaign }),
             ...(utm_content && { utm_content }),
+            // Pass through Meta's URL params (adset, hook) as custom data
             ...(custom_params || {}),
           },
         },
       ],
-      ...(testEventCode ? { test_event_code: testEventCode } : {}),
     };
 
     const response = await fetch(
