@@ -23,6 +23,7 @@ const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
   { stage: 'no_show', label: 'No-Show' },
   { stage: 'second_call_no_show', label: '2nd Call No-Show' },
   { stage: 'cancelled', label: 'Cancelled' },
+  { stage: 'rescheduled', label: 'Rescheduled' },
   { stage: 'disqualified', label: 'Disqualified' },
   { stage: 'spam', label: 'Spam' },
   { stage: 'test', label: 'Test' },
@@ -38,7 +39,8 @@ const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = 
   { stage: 'proposal_sent', label: 'Proposal Sent', group: 'Active' },
   { stage: 'no_show', label: 'No-Show (1st call)', group: 'Archive' },
   { stage: 'second_call_no_show', label: 'No-Show (2nd call)', group: 'Archive' },
-  { stage: 'cancelled', label: 'Cancelled / Rescheduled', group: 'Archive' },
+  { stage: 'cancelled', label: 'Cancelled', group: 'Archive' },
+  { stage: 'rescheduled', label: 'Rescheduled', group: 'Archive' },
   { stage: 'disqualified', label: 'Disqualified', group: 'Archive' },
   { stage: 'spam', label: 'Spam', group: 'Archive' },
   { stage: 'test', label: 'Test entry', group: 'Archive' },
@@ -100,6 +102,7 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
   onValueChange: (id: string, field: 'proposal_value' | 'revenue', value: number) => void
   onFieldChange: (id: string, field: string, value: string) => void
 }) {
+  const callDateLocal = lead.call_datetime ? new Date(new Date(lead.call_datetime).getTime() - new Date(lead.call_datetime).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
   const creative = lead.utm_content ? creativeMap[lead.utm_content] : null
   return (
     <div className="fixed inset-0 z-50 flex justify-end" style={{ background: 'rgba(0,0,0,0.65)' }} onClick={onClose}>
@@ -213,6 +216,22 @@ function LeadDetail({ lead, onClose, onStageChange, onValueChange, onFieldChange
                 <div className="flex justify-between text-sm pt-1">
                   <span style={{ color: muted }}>1st call</span>
                   <span style={{ color: '#F0F2F8' }}>{new Date(lead.call_datetime).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</span>
+                </div>
+              )}
+              {lead.stage === 'rescheduled' && (
+                <div className="pt-2">
+                  <span className="text-xs block mb-2" style={{ color: muted }}>Rescheduled to</span>
+                  <input
+                    type="datetime-local"
+                    defaultValue={callDateLocal}
+                    onBlur={e => {
+                      if (!e.target.value) return
+                      const iso = new Date(e.target.value).toISOString()
+                      if (iso !== lead.call_datetime) onFieldChange(lead.id, 'call_datetime', iso)
+                    }}
+                    className="w-full px-2.5 py-1.5 rounded-md text-sm"
+                    style={{ background: surface, border: `1px solid ${border}`, color: '#F0F2F8' }}
+                  />
                 </div>
               )}
               {lead.second_call_datetime && (
@@ -520,8 +539,14 @@ export default function Pipeline() {
       return
     }
 
-    setLeads(p => p.map(l => l.id === id ? { ...l, stage } : l))
-    if (selected?.id === id) setSelected(p => p ? { ...p, stage } : null)
+    const nextLead = current ? {
+      ...current,
+      stage,
+      ...(stage === 'rescheduled' && current.call_datetime ? { booking_completed: true } : {}),
+    } : null
+
+    setLeads(p => p.map(l => l.id === id ? { ...l, ...nextLead } : l))
+    if (selected?.id === id && nextLead) setSelected(nextLead)
     try {
       await updateLeadStage(id, stage, current?.stage)
       const { supabase } = await import('../lib/supabase')

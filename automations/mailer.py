@@ -14,6 +14,7 @@ GMAIL_USER = "bigfish@testtubemarketing.com"
 GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "ndcrbnkssmuetnok")
 SUPABASE_URL = "https://oirnxlidjgsbcyhtxkse.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDIxMDQ3NiwiZXhwIjoyMDg5Nzg2NDc2fQ.sLFdQSnnX1gdHrlUNgj_1I6_-w0UJ5pqRoD4euL7Imk"
 WEEKLY_REPORT_RECIPIENTS = ["bigfish@testtubemarketing.com", "ad@testtubemarketing.com"]
 OPENCLAW_BIN = os.environ.get("OPENCLAW_BIN", "/data/.npm-global/bin/openclaw")
 UK_TZ = ZoneInfo("Europe/London")
@@ -224,7 +225,6 @@ def process_whatsapp_queue():
         return
 
     if not queued:
-        print("No WhatsApp messages ready")
         return
 
     print(f"WhatsApp ready: {len(queued)}")
@@ -429,6 +429,103 @@ The Nucleus | Test Tube Marketing
     for recipient in WEEKLY_REPORT_RECIPIENTS:
         send_email(recipient, subject, text)
 
+# ─── EVENT FACT FIND NOTIFICATIONS ─────────────────────────────────────────
+FACTFIND_NOTIFY_EMAIL = "hello@testtubemarketing.com"
+FACTFIND_SENT_TABLE = "event_fact_find_email_sent"
+
+FACTFIND_LABELS = [
+    ("name", "Name"),
+    ("email", "Email"),
+    ("business_name", "Business name"),
+    ("event_name", "Event name"),
+    ("event_type", "Event type / format"),
+    ("event_location", "Location / delivery"),
+    ("ideal_audience", "Ideal audience"),
+    ("budget", "Budget"),
+    ("ticket_prices", "Ticket prices"),
+    ("marketing_assets", "Marketing assets"),
+    ("hook_ideas", "Why people should attend / hook ideas"),
+    ("dates", "Dates"),
+    ("launch_plan", "Current launch plan"),
+    ("wow_targets", "Win, wow, woah targets"),
+    ("commercial_expectation", "Commercial expectation"),
+    ("event_sales", "Event sales"),
+    ("previous_event_history", "Previous event history"),
+    ("speakers_and_logistics", "Speakers / logistics / operational notes"),
+    ("extra_context", "Anything else Ad and Grace should know?"),
+]
+
+def send_factfind_email(row):
+    rows_html = ""
+    for key, label in FACTFIND_LABELS:
+        val = (row.get(key) or "").strip()
+        if val:
+            rows_html += f'<tr><td style="padding:12px 14px;border:1px solid #e6dfe3;background:#faf7f8;font-weight:700;vertical-align:top;width:220px;">{label}</td><td style="padding:12px 14px;border:1px solid #e6dfe3;white-space:pre-wrap;line-height:1.6;">{html.escape(val)}</td></tr>'
+    html_body = f"""<div style="font-family:Inter,Arial,sans-serif;padding:24px;background:#fcfbfb;color:#222;">
+<h1 style="margin:0 0 16px;font-size:28px;">New Event Consult questionnaire</h1>
+<p style="margin:0 0 20px;color:#555;">A completed questionnaire has been submitted from events.testtubemarketing.com/factfind.</p>
+<table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e6dfe3;"><tbody>{rows_html}</tbody></table>
+</div>"""
+    subject = f"New Event Consult questionnaire — {row.get('business_name') or row.get('name', 'Unknown')}"
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"TTM Events <{GMAIL_USER}>"
+    msg["To"] = FACTFIND_NOTIFY_EMAIL
+    if row.get("email"):
+        msg["Reply-To"] = row["email"]
+    msg.attach(MIMEText(html_body, "html"))
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+        smtp.login(GMAIL_USER, GMAIL_APP_PASSWORD)
+        smtp.sendmail(GMAIL_USER, [FACTFIND_NOTIFY_EMAIL], msg.as_string())
+
+def process_factfind_notifications():
+    """Send email notifications for event fact find submissions not yet emailed.
+    Uses a local marker file to track which IDs have been sent."""
+    import os
+    marker_path = "/data/.openclaw/workspace/the-nucleus/automations/factfind_sent_ids.txt"
+    sent_ids = set()
+    if os.path.exists(marker_path):
+        sent_ids = set(open(marker_path).read().splitlines())
+
+    # Fetch all submissions
+    url = SUPABASE_URL + "/rest/v1/event_fact_finds?select=*&order=created_at.asc"
+    req = urllib.request.Request(url, headers={
+        "apikey": SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": "Bearer " + SUPABASE_SERVICE_ROLE_KEY
+    })
+    try:
+        with urllib.request.urlopen(req) as r:
+            rows = json.loads(r.read())
+    except Exception as e:
+        print(f"Failed to fetch fact finds: {e}")
+        return
+
+    sent = 0
+    for row in rows:
+        rid = row.get("id", "")
+        if rid in sent_ids:
+            continue
+        # Skip obvious test rows
+        email = (row.get("email") or "").lower()
+        if email.endswith("@testtubemarketing.com") or "testing" in email or email == "test@test.com":
+            sent_ids.add(rid)
+            continue
+        try:
+            send_factfind_email(row)
+            sent_ids.add(rid)
+            sent += 1
+            print(f"  Sent fact find notification for {row.get('name')} ({row.get('business_name')})")
+        except Exception as e:
+            print(f"  Failed to send for {rid}: {e}")
+
+    with open(marker_path, "w") as f:
+        f.write("\n".join(sent_ids))
+
+    if sent == 0:
+        print("No new fact find submissions to notify")
+    else:
+        print(f"Fact find notifications sent: {sent}")
+
 # ─── MAIN ────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
@@ -441,9 +538,11 @@ if __name__ == "__main__":
         send_reminders()
     elif cmd == "weekly_report":
         send_weekly_report()
+    elif cmd == "factfind_notifications":
+        process_factfind_notifications()
     elif cmd == "process_whatsapp_queue":
         process_whatsapp_queue()
     elif cmd == "test":
         send_email(GMAIL_USER, "✅ Nucleus email test", "Email system working correctly.")
     else:
-        print("Usage: python3 email.py <confirm <lead_id> | pending_confirmations | reminders | weekly_report | process_whatsapp_queue | test>")
+        print("Usage: python3 email.py <confirm <lead_id> | pending_confirmations | factfind_notifications | reminders | weekly_report | process_whatsapp_queue | test>")
