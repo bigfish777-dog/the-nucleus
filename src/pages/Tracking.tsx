@@ -159,10 +159,12 @@ export default function Tracking() {
   const cardLanding = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
   const cardBooking = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
   const cardLeads = filteredForCards.filter(e => e.event_type === 'lead_capture').length
-  // Booked: combined uses spam-excluded leads table; variant view uses tracking events
-  const cardBooked = cardVariant === 'combined'
-    ? bookedLeads.length
-    : filteredForCards.filter(e => e.event_type === 'booking_completed').length
+  // Booked: always use spam-excluded leads table as source of truth.
+  // Until the leads table has a variant column, all bookings are Variant A by definition
+  // (B hasn't launched). Variant B shows 0 from tracking_events (correct).
+  const cardBooked = cardVariant === 'b'
+    ? filteredForCards.filter(e => e.event_type === 'booking_completed').length
+    : bookedLeads.length
 
   const cardSubtitle =
     cardVariant === 'combined' ? 'Showing combined data across both variants'
