@@ -2,13 +2,15 @@ import React from 'react'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts'
 import { TRACKING_RESET_CUTOVER } from '../lib/cutover'
 
-const pink = '#FF0D64'
-const teal = '#3FEACE'
-const amber = '#FFA71A'
+// Brand colours
+const varA = '#E91E63'   // Variant A — pink (brief spec)
+const varB = '#22D3EE'   // Variant B — cyan (brief spec)
+const teal = '#3FEACE'   // existing chart teal (source/traffic panel)
 const muted = '#8891A8'
 const border = 'rgba(255,255,255,0.08)'
 const surface = '#161B27'
 const white = '#F0F2F8'
+const green = '#22C55E'
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://oirnxlidjgsbcyhtxkse.supabase.co'
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9pcm54bGlkamdzYmN5aHR4a3NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMTA0NzYsImV4cCI6MjA4OTc4NjQ3Nn0.tonvjgYhT5Y9jlyIMFa11fjc8k_gGj8m11L0UseOe_s'
@@ -38,6 +40,10 @@ type TrackingEvent = {
   variant?: 'a' | 'b' | null
 }
 
+type CardVariant = 'combined' | 'a' | 'b'
+type ChartVariant = 'both' | 'a' | 'b'
+type ChartMetric = 'visits' | 'leads' | 'booked'
+
 function dateKey(date: Date) {
   return date.toISOString().slice(0, 10)
 }
@@ -47,10 +53,75 @@ function fmtPct(numerator: number, denominator: number) {
   return `${((numerator / denominator) * 100).toFixed(1)}%`
 }
 
+function pctNum(numerator: number, denominator: number) {
+  if (!denominator) return 0
+  return (numerator / denominator) * 100
+}
+
+// Treat null variant as A (all historical data pre-B-launch is effectively A)
+function filterEvents(evts: TrackingEvent[], v: CardVariant) {
+  if (v === 'combined') return evts
+  if (v === 'a') return evts.filter(e => !e.variant || e.variant === 'a')
+  return evts.filter(e => e.variant === 'b')
+}
+
+function variantStats(events: TrackingEvent[], v: 'a' | 'b') {
+  const evts = filterEvents(events, v)
+  const landing = evts.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
+  const booking = evts.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
+  const leads = evts.filter(e => e.event_type === 'lead_capture').length
+  const booked = evts.filter(e => e.event_type === 'booking_completed').length
+  return { landing, booking, leads, booked }
+}
+
+function SegmentedToggle<T extends string>({
+  options, value, onChange, dotMap,
+}: {
+  options: { value: T; label: string }[]
+  value: T
+  onChange: (v: T) => void
+  dotMap?: Partial<Record<T, string>>
+}) {
+  return (
+    <div style={{
+      display: 'inline-flex', background: 'rgba(255,255,255,0.06)', borderRadius: 8,
+      border: `1px solid ${border}`, padding: 3, gap: 2,
+    }}>
+      {options.map(opt => {
+        const active = opt.value === value
+        return (
+          <button
+            key={opt.value}
+            onClick={() => onChange(opt.value)}
+            style={{
+              padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: active ? 700 : 400,
+              background: active ? 'rgba(255,255,255,0.12)' : 'transparent',
+              color: active ? white : muted,
+              border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5,
+              transition: 'all 0.15s',
+            }}
+          >
+            {dotMap?.[opt.value] && (
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: dotMap[opt.value], display: 'inline-block', flexShrink: 0 }} />
+            )}
+            {opt.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
   const [bookedLeads, setBookedLeads] = React.useState<{ created_at: string; stage: string }[]>([])
   const [loading, setLoading] = React.useState(true)
+
+  // Card variant toggle
+  const [cardVariant, setCardVariant] = React.useState<CardVariant>('combined')
+  // Chart controls
+  const [chartVariant, setChartVariant] = React.useState<ChartVariant>('both')
+  const [chartMetric, setChartMetric] = React.useState<ChartMetric>('visits')
 
   React.useEffect(() => {
     async function load() {
@@ -83,26 +154,48 @@ export default function Tracking() {
     load()
   }, [])
 
-  const landingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/')
-  const bookingViews = events.filter(e => e.event_type === 'page_view' && e.page_path === '/book')
-  const leadCaptures = events.filter(e => e.event_type === 'lead_capture')
+  // ── Metric card data (filtered by cardVariant) ──────────────────────────────
+  const filteredForCards = filterEvents(events, cardVariant)
+  const cardLanding = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
+  const cardBooking = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
+  const cardLeads = filteredForCards.filter(e => e.event_type === 'lead_capture').length
+  // Booked: combined uses spam-excluded leads table; variant view uses tracking events
+  const cardBooked = cardVariant === 'combined'
+    ? bookedLeads.length
+    : filteredForCards.filter(e => e.event_type === 'booking_completed').length
 
-  const totalVisits = landingViews.length
-  const totalBookPageViews = bookingViews.length
-  const totalLeads = leadCaptures.length
-  const totalBooked = bookedLeads.length // from leads table, excludes spam/test
+  const cardSubtitle =
+    cardVariant === 'combined' ? 'Showing combined data across both variants'
+    : cardVariant === 'a' ? 'Showing Variant A (original) only'
+    : 'Showing Variant B (questions-first) only'
 
+  // ── Chart data ──────────────────────────────────────────────────────────────
   const now = new Date()
+  const hasBData = events.some(e => e.variant === 'b')
+
   const daily = Array.from({ length: 30 }, (_, idx) => {
     const day = new Date(now)
     day.setDate(now.getDate() - (29 - idx))
     const key = dateKey(day)
-    const visits = landingViews.filter(event => event.created_at.slice(0, 10) === key).length
-    const leads = leadCaptures.filter(event => event.created_at.slice(0, 10) === key).length
-    const booked = bookedLeads.filter(lead => lead.created_at.slice(0, 10) === key).length
-    return { label: key.slice(5), visits, leads, booked }
+
+    function dayCount(v: CardVariant, type: ChartMetric) {
+      const evts = filterEvents(events, v)
+      if (type === 'visits') return evts.filter(e => e.event_type === 'page_view' && e.page_path === '/' && e.created_at.slice(0, 10) === key).length
+      if (type === 'leads') return evts.filter(e => e.event_type === 'lead_capture' && e.created_at.slice(0, 10) === key).length
+      // booked — use leads table for combined, tracking events for variants
+      if (v === 'combined') return bookedLeads.filter(l => l.created_at.slice(0, 10) === key).length
+      return evts.filter(e => e.event_type === 'booking_completed' && e.created_at.slice(0, 10) === key).length
+    }
+
+    return {
+      label: key.slice(5),
+      varA: dayCount('a', chartMetric),
+      varB: dayCount('b', chartMetric),
+      combined: dayCount('combined', chartMetric),
+    }
   })
 
+  // ── Source breakdown (unchanged, always combined) ───────────────────────────
   const sourceMap = new Map<string, { visits: number; leads: number; booked: number }>()
   for (const event of events) {
     const key = event.utm_campaign || event.utm_source || event.utm_content || 'Direct / unknown'
@@ -119,38 +212,112 @@ export default function Tracking() {
     .sort((a, b) => b.visits - a.visits)
     .slice(0, 8)
 
+  // ── A/B comparison stats ────────────────────────────────────────────────────
+  const aStats = variantStats(events, 'a')
+  const bStats = variantStats(events, 'b')
+  const totalVariantVisits = aStats.landing + bStats.landing
+
+  const aEndPct = pctNum(aStats.booked, aStats.booking)
+  const bEndPct = pctNum(bStats.booked, bStats.booking)
+  const endDelta = Math.abs(aEndPct - bEndPct)
+  const currentLeader: 'a' | 'b' | null = hasBData
+    ? aEndPct >= bEndPct ? 'a' : 'b'
+    : null
+
+  const SIGNIFICANCE_THRESHOLD = 100
+
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div>
         <h1 className="text-xl font-bold" style={{ color: white }}>Tracking</h1>
         <p className="text-sm mt-0.5" style={{ color: muted }}>Real event data from book.testtubemarketing.com only</p>
         <p className="text-xs mt-1" style={{ color: muted }}>Reset from {new Date(TRACKING_RESET_CUTOVER).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-        <MetricCard label="Landing page visits" value={String(totalVisits)} sub="Tracked page views" />
-        <MetricCard label="Booking page visits" value={String(totalBookPageViews)} sub="People who reached /book" />
-        <MetricCard label="Leads captured" value={String(totalLeads)} sub={fmtPct(totalLeads, totalVisits) + ' visit → lead'} />
-        <MetricCard label="Booked calls" value={String(totalBooked)} sub={fmtPct(totalBooked, totalLeads) + ' lead → booked'} />
-        <MetricCard label="Visit → booked" value={fmtPct(totalBooked, totalVisits)} sub="End-to-end conversion" />
+      {/* Metric cards with variant toggle */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs" style={{ color: muted }}>{cardSubtitle}</p>
+          <SegmentedToggle<CardVariant>
+            options={[
+              { value: 'combined', label: 'Combined' },
+              { value: 'a', label: 'Variant A' },
+              { value: 'b', label: 'Variant B' },
+            ]}
+            value={cardVariant}
+            onChange={setCardVariant}
+            dotMap={{ a: varA, b: varB }}
+          />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <MetricCard label="Landing page visits" value={String(cardLanding)} sub="Tracked page views" />
+          <MetricCard label="Booking page visits" value={String(cardBooking)} sub="People who reached /book" />
+          <MetricCard label="Leads captured" value={String(cardLeads)} sub={fmtPct(cardLeads, cardLanding) + ' visit → lead'} />
+          <MetricCard label="Booked calls" value={String(cardBooked)} sub={fmtPct(cardBooked, cardLeads) + ' lead → booked'} />
+          <MetricCard label="Visit → booked" value={fmtPct(cardBooked, cardLanding)} sub="End-to-end conversion" />
+        </div>
       </div>
 
+      {/* Chart row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
-          <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: muted }}>Daily funnel trend</p>
-          <ResponsiveContainer width="100%" height={260}>
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>Daily funnel trend</p>
+              {/* Metric selector tabs */}
+              <div style={{ display: 'flex', gap: 0, marginTop: 8 }}>
+                {(['visits', 'leads', 'booked'] as ChartMetric[]).map(m => (
+                  <button
+                    key={m}
+                    onClick={() => setChartMetric(m)}
+                    style={{
+                      padding: '3px 10px', fontSize: 11, fontWeight: chartMetric === m ? 700 : 400,
+                      color: chartMetric === m ? white : muted,
+                      background: 'none', border: 'none',
+                      borderBottom: `2px solid ${chartMetric === m ? varA : 'transparent'}`,
+                      cursor: 'pointer', textTransform: 'capitalize',
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <SegmentedToggle<ChartVariant>
+              options={[
+                { value: 'both', label: 'Both' },
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+              ]}
+              value={chartVariant}
+              onChange={setChartVariant}
+              dotMap={{ a: varA, b: varB }}
+            />
+          </div>
+          <ResponsiveContainer width="100%" height={240}>
             <LineChart data={daily}>
               <CartesianGrid strokeDasharray="3 3" stroke={border} />
               <XAxis dataKey="label" tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: muted }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ background: surface, border: `1px solid ${border}`, fontSize: 12 }} />
-              <Line type="monotone" dataKey="visits" stroke={teal} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="leads" stroke={amber} strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="booked" stroke={pink} strokeWidth={2} dot={false} />
+              {(chartVariant === 'both' || chartVariant === 'a') && (
+                <Line type="monotone" dataKey="varA" name="Variant A" stroke={varA} strokeWidth={2} dot={false} />
+              )}
+              {(chartVariant === 'both') && hasBData && (
+                <Line type="monotone" dataKey="varB" name="Variant B" stroke={varB} strokeWidth={2} dot={false} />
+              )}
+              {chartVariant === 'b' && hasBData && (
+                <Line type="monotone" dataKey="varB" name="Variant B" stroke={varB} strokeWidth={2} dot={false} />
+              )}
+              {chartVariant === 'b' && !hasBData && (
+                <Line type="monotone" dataKey="varB" name="Variant B — awaiting data" stroke={muted} strokeWidth={1} dot={false} strokeDasharray="4 4" />
+              )}
             </LineChart>
           </ResponsiveContainer>
         </Card>
 
+        {/* Traffic by source — unchanged */}
         <Card>
           <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: muted }}>Traffic by source / campaign</p>
           <ResponsiveContainer width="100%" height={260}>
@@ -165,6 +332,80 @@ export default function Tracking() {
         </Card>
       </div>
 
+      {/* A/B Comparison panel */}
+      <Card>
+        {/* Header row */}
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <p className="text-sm font-bold" style={{ color: white }}>Variant A (original) vs Variant B (questions-first)</p>
+            <p className="text-xs mt-1" style={{ color: muted }}>
+              70/30 split · {totalVariantVisits} total recorded visits
+            </p>
+          </div>
+          {/* Current leader badge */}
+          {currentLeader ? (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+              padding: '8px 14px', border: `1px solid ${border}`,
+            }}>
+              <span style={{ fontSize: 11, color: muted, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Current leader</span>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: currentLeader === 'a' ? varA : varB, display: 'inline-block' }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: currentLeader === 'a' ? varA : varB }}>
+                Variant {currentLeader.toUpperCase()}
+              </span>
+              {endDelta > 0 && (
+                <span style={{ fontSize: 11, color: green, fontWeight: 600 }}>+{endDelta.toFixed(1)}pp</span>
+              )}
+            </div>
+          ) : (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'rgba(255,255,255,0.05)', borderRadius: 8,
+              padding: '8px 14px', border: `1px solid ${border}`,
+            }}>
+              <span style={{ fontSize: 11, color: muted }}>No data yet</span>
+            </div>
+          )}
+        </div>
+
+        {/* Comparison table */}
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left' }}>
+                <th style={{ padding: '0 0 12px', color: muted, fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Metric</th>
+                <th style={{ padding: '0 0 12px', color: varA, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                  ● Variant A
+                </th>
+                <th style={{ padding: '0 0 12px', color: muted, fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'center' }}>Delta</th>
+                <th style={{ padding: '0 0 12px', color: hasBData ? varB : muted, fontWeight: 700, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.08em', textAlign: 'right' }}>
+                  ● Variant B
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <ABRow label="Landing page visits" aVal={aStats.landing} bVal={hasBData ? bStats.landing : null} type="count" />
+              <ABRow label="Booking page visits" aVal={aStats.booking} bVal={hasBData ? bStats.booking : null} type="count" />
+              <ABRow label="Leads captured" aVal={aStats.leads} bVal={hasBData ? bStats.leads : null} type="count" />
+              <ABRow label="Booked calls" aVal={aStats.booked} bVal={hasBData ? bStats.booked : null} type="count" />
+              <ABRow label="Visit → lead (%)" aVal={pctNum(aStats.leads, aStats.booking)} bVal={hasBData ? pctNum(bStats.leads, bStats.booking) : null} type="pct" />
+              <ABRow label="Lead → booked (%)" aVal={pctNum(aStats.booked, aStats.leads)} bVal={hasBData ? pctNum(bStats.booked, bStats.leads) : null} type="pct" />
+              <ABRow label="End-to-end conversion (%)" aVal={aEndPct} bVal={hasBData ? bEndPct : null} type="pct" highlight />
+            </tbody>
+          </table>
+        </div>
+
+        {/* Caveat */}
+        <div style={{
+          marginTop: 20, padding: '10px 14px', background: 'rgba(255,255,255,0.03)',
+          border: `1px solid ${border}`, borderRadius: 8, fontSize: 12, color: muted,
+        }}>
+          ⚠️ Low sample size. Results not yet statistically significant. Need at least {SIGNIFICANCE_THRESHOLD} conversions per variant for a confident read.
+        </div>
+      </Card>
+
+      {/* Source breakdown — unchanged */}
       <Card>
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>Source breakdown</p>
@@ -200,117 +441,43 @@ export default function Tracking() {
           </table>
         </div>
       </Card>
-
-      <ABTestPanel events={events} loading={loading} />
     </div>
   )
 }
 
-function ABTestPanel({ events, loading }: { events: TrackingEvent[]; loading: boolean }) {
-  const green = '#22C55E'
+// A/B comparison table row
+function ABRow({
+  label, aVal, bVal, type, highlight = false,
+}: {
+  label: string
+  aVal: number
+  bVal: number | null
+  type: 'count' | 'pct'
+  highlight?: boolean
+}) {
+  const fmt = (v: number) => type === 'pct' ? `${v.toFixed(1)}%` : String(v)
 
-  const variantEvents = events.filter(e => e.variant === 'a' || e.variant === 'b')
-  const hasData = variantEvents.length > 0
-
-  function variantStats(v: 'a' | 'b') {
-    const vEvents = events.filter(e => e.variant === v)
-    const visits = vEvents.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
-    const leads = vEvents.filter(e => e.event_type === 'lead_capture').length
-    const booked = vEvents.filter(e => e.event_type === 'booking_completed').length
-    return { visits, leads, booked }
-  }
-
-  const a = variantStats('a')
-  const b = variantStats('b')
-
-  const winner = (aVal: number, bVal: number, denom: number) => {
-    if (!denom) return null
-    const aPct = aVal / denom
-    const bPct = bVal / denom
-    if (aPct === bPct) return null
-    return aPct > bPct ? 'a' : 'b'
-  }
-
-  const leadWinner = winner(a.leads, b.leads, a.visits + b.visits)
-  const bookWinner = winner(a.booked, b.booked, a.leads + b.leads)
+  const hasB = bVal !== null
+  const aWins = hasB && aVal >= bVal
+  const bWins = hasB && bVal > aVal
+  const delta = hasB ? Math.abs(aVal - bVal) : null
 
   return (
-    <Card>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>A/B Split Test</p>
-          <p className="text-xs mt-0.5" style={{ color: muted }}>Variant A (original) vs Variant B (questions-first funnel) · 70/30 split</p>
-        </div>
-        <span style={{
-          fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-          background: hasData ? 'rgba(34,197,94,0.12)' : 'rgba(136,145,168,0.12)',
-          color: hasData ? green : muted,
-          border: `1px solid ${hasData ? 'rgba(34,197,94,0.25)' : 'rgba(136,145,168,0.2)'}`,
-          letterSpacing: '0.08em',
-        }}>
-          {hasData ? '● LIVE' : '○ AWAITING DATA'}
-        </span>
-      </div>
-
-      {!hasData && !loading && (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: muted, fontSize: 13 }}>
-          <p style={{ fontSize: 24, marginBottom: 8 }}>🧪</p>
-          <p style={{ fontWeight: 600, color: white, marginBottom: 4 }}>No split test data yet</p>
-          <p>Once Variant B is live and traffic comes in, results will appear here automatically.</p>
-        </div>
-      )}
-
-      {loading && (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: muted, fontSize: 13 }}>Loading…</div>
-      )}
-
-      {hasData && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          {(['a', 'b'] as const).map(v => {
-            const stats = v === 'a' ? a : b
-            const label = v === 'a' ? 'Variant A — Original' : 'Variant B — Questions First'
-            const accent = v === 'a' ? teal : pink
-            const isLeadWin = leadWinner === v
-            const isBookWin = bookWinner === v
-
-            return (
-              <div key={v} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 10, padding: 16, border: `1px solid ${border}` }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>{label}</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <StatRow label="Booking page visits" value={String(stats.visits)} />
-                  <StatRow
-                    label="Leads captured"
-                    value={`${stats.leads} (${fmtPct(stats.leads, stats.visits)})`}
-                    highlight={isLeadWin}
-                  />
-                  <StatRow
-                    label="Calls booked"
-                    value={`${stats.booked} (${fmtPct(stats.booked, stats.leads)})`}
-                    highlight={isBookWin}
-                  />
-                  <StatRow
-                    label="Visit → booked"
-                    value={fmtPct(stats.booked, stats.visits)}
-                    highlight={isLeadWin && isBookWin}
-                  />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </Card>
-  )
-}
-
-function StatRow({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  const green = '#22C55E'
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 13 }}>
-      <span style={{ color: muted }}>{label}</span>
-      <span style={{ fontWeight: 700, color: highlight ? green : white }}>
-        {highlight && <span style={{ marginRight: 4 }}>🏆</span>}{value}
-      </span>
-    </div>
+    <tr style={{ borderTop: `1px solid ${border}` }}>
+      <td style={{ padding: '12px 0', color: highlight ? white : muted, fontWeight: highlight ? 600 : 400 }}>{label}</td>
+      <td style={{ padding: '12px 0', fontWeight: aWins ? 700 : 400, color: aWins ? white : muted }}>
+        {fmt(aVal)}
+      </td>
+      <td style={{ padding: '12px 0', textAlign: 'center', color: muted }}>
+        {delta !== null ? (
+          <span style={{ color: green, fontWeight: 600, fontSize: 12 }}>
+            {aWins ? '▲' : '▼'} {fmt(delta)} {aWins ? 'A wins' : 'B wins'}
+          </span>
+        ) : '—'}
+      </td>
+      <td style={{ padding: '12px 0', textAlign: 'right', fontWeight: bWins ? 700 : 400, color: hasB ? (bWins ? white : muted) : muted }}>
+        {hasB ? fmt(bVal) : 'Awaiting data'}
+      </td>
+    </tr>
   )
 }
