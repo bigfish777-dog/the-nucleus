@@ -36,8 +36,9 @@ type TrackingEvent = {
   utm_campaign?: string | null
   utm_content?: string | null
   session_id: string
-  event_type: 'page_view' | 'lead_capture' | 'booking_completed'
+  event_type: 'page_view' | 'lead_capture' | 'booking_completed' | 'post_booking_question' | string
   variant?: 'a' | 'b' | null
+  metadata?: Record<string, string | number | boolean | null>
 }
 
 type CardVariant = 'combined' | 'a' | 'b'
@@ -138,7 +139,7 @@ export default function Tracking() {
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
         const [eventsRes, leadsRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant`, { headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant,metadata`, { headers }),
           fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage&order=created_at.asc`, { headers }),
         ])
         const eventsJson = await eventsRes.json()
@@ -219,6 +220,22 @@ export default function Tracking() {
   const bStats = variantStats(events, 'b')
   const totalVariantVisits = aStats.landing + bStats.landing
 
+  // ── Post-booking question funnel ───────────────────────────────────────────
+  const POST_BOOKING_Q_KEYS = ['business_type', 'client_value', 'challenge', 'readiness', 'website']
+  const POST_BOOKING_Q_LABELS: Record<string, string> = {
+    business_type: 'Business type',
+    client_value: 'Client value',
+    challenge: 'Biggest challenge',
+    readiness: 'Investment readiness',
+    website: 'Website',
+  }
+  const totalBooked = bookedLeads.length
+  const pbqEvents = events.filter(e => e.event_type === 'post_booking_question')
+  const pbqCounts: Record<string, number> = {}
+  for (const q of POST_BOOKING_Q_KEYS) {
+    pbqCounts[q] = pbqEvents.filter((e: { metadata?: { question?: string } }) => e.metadata?.question === q).length
+  }
+
   const aEndPct = pctNum(aStats.booked, aStats.booking)
   const bEndPct = pctNum(bStats.booked, bStats.booking)
   const endDelta = Math.abs(aEndPct - bEndPct)
@@ -260,6 +277,30 @@ export default function Tracking() {
           <MetricCard label="Visit → booked" value={fmtPct(cardBooked, cardLanding)} sub="End-to-end conversion" />
         </div>
       </div>
+
+      {/* Post-booking question funnel */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: muted }}>Post-booking question completion</p>
+        <p className="text-xs mb-4" style={{ color: muted }}>After booking, visitors are shown 5 optional questions one at a time. Track dropoff below.</p>
+        <div className="space-y-3">
+          {POST_BOOKING_Q_KEYS.map((key, idx) => {
+            const count = pbqCounts[key] || 0
+            const pct = totalBooked > 0 ? Math.round((count / totalBooked) * 100) : 0
+            return (
+              <div key={key}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                  <span className="text-xs font-semibold" style={{ color: white }}>Q{idx + 1}: {POST_BOOKING_Q_LABELS[key]}</span>
+                  <span className="text-xs" style={{ color: muted }}>{count} answered &middot; {pct}% of booked</span>
+                </div>
+                <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 4 }}>
+                  <div style={{ height: '100%', width: `${pct}%`, background: varA, borderRadius: 4, transition: 'width 0.4s' }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {totalBooked === 0 && <p className="text-xs mt-3" style={{ color: muted }}>No bookings yet in the current window.</p>}
+      </Card>
 
       {/* Chart row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

@@ -19,11 +19,11 @@ const AVAILABILITY_CONFIG = {
   timezone: "Europe/London",
   days: [1, 2, 3, 4, 5], // Mon-Fri
   startHour: 10,         // First slot at 10am London
-  endHour: 17,           // No call can START after 16:20 (ends by 17:00)
+  endHour: 21,           // No call can START after 20:20 (ends by 21:00)
   latestStartMinute: 40, // 16:40 would end at 17:20 — too late. Latest start = 16:20
   slotDurationMinutes: 40,
   bufferMinutes: 10,     // 10-min buffer between calls
-  minNoticeHours: 24,
+  minNoticeHours: 4,
   maxWorkingDaysAhead: 4,
 };
 
@@ -308,7 +308,12 @@ serve(async (req: Request) => {
         utm_source,
         utm_campaign,
         utm_content,
+        turnover,
       } = body;
+
+      // Only fire Meta Purchase if turnover is £500k+ (not under £500k or unknown)
+      const UNDER_500K_VALUE = "Under £500k";
+      const shouldFireMetaPurchase = turnover && turnover !== UNDER_500K_VALUE;
 
       if (!slotStart || !slotEnd || !leadName || !leadEmail) {
         return new Response(
@@ -386,6 +391,7 @@ serve(async (req: Request) => {
         stage: "booked",
         booking_completed: true,
         updated_at: new Date().toISOString(),
+        ...(turnover ? { revenue_range: turnover } : {}),
       };
 
       let confirmedLeadId: string | null = leadId || null;
@@ -456,7 +462,7 @@ serve(async (req: Request) => {
           .eq("id", confirmedLeadId)
           .single();
 
-        if (leadForMeta) {
+        if (leadForMeta && shouldFireMetaPurchase) {
           try {
             await sendMetaPurchase(leadForMeta, slotStart);
             await supabase.from("leads").update({
