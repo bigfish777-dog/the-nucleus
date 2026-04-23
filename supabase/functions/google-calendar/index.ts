@@ -5,8 +5,8 @@ const GOOGLE_CLIENT_ID = Deno.env.get("GOOGLE_CLIENT_ID")!;
 const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
-const META_CONVERSION_URL = `${SUPABASE_URL}/functions/v1/meta-conversion`;
+const META_TOKEN = Deno.env.get("META_TOKEN")!;
+const PIXEL_ID = "1427972831789819";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -31,6 +31,17 @@ function buildPurchaseEventId(leadId: string, slotStart: string): string {
   return `purchase_${leadId}_${slotStart}`;
 }
 
+async function sha256Hash(value: string): Promise<string> {
+  const data = new TextEncoder().encode(value.toLowerCase().trim());
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function normalizePhone(value: string): string {
+  return value.replace(/\s+/g, "").replace(/^\+/, "");
+}
+
 async function sendMetaPurchase(lead: {
   id: string;
   email: string | null;
@@ -43,30 +54,42 @@ async function sendMetaPurchase(lead: {
   utm_content?: string | null;
 }, slotStart: string) {
   const eventId = buildPurchaseEventId(lead.id, slotStart);
-  const response = await fetch(META_CONVERSION_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({
-      eventName: "Purchase",
-      eventId,
-      eventTime: Math.floor(Date.now() / 1000),
-      eventSourceUrl: lead.event_source_url || "https://book.testtubemarketing.com",
-      email: lead.email,
-      phone: lead.phone,
-      fbp: lead.fbp || undefined,
-      fbc: lead.fbc || undefined,
-      externalId: lead.id,
-      utm_source: lead.utm_source || undefined,
-      utm_campaign: lead.utm_campaign || undefined,
-      utm_content: lead.utm_content || undefined,
-      custom_params: {
-        lead_id: lead.id,
-        booking_slot_start: slotStart,
+  const hashedEmail = lead.email ? await sha256Hash(lead.email) : undefined;
+  const hashedPhone = lead.phone ? await sha256Hash(normalizePhone(lead.phone)) : undefined;
+  const hashedExternalId = await sha256Hash(lead.id);
+
+  const payload = {
+    data: [
+      {
+        event_name: "Purchase",
+        event_time: Math.floor(Date.now() / 1000),
+        action_source: "website",
+        event_source_url: lead.event_source_url || "https://book.testtubemarketing.com",
+        event_id: eventId,
+        user_data: {
+          ...(hashedEmail && { em: [hashedEmail] }),
+          ...(hashedPhone && { ph: [hashedPhone] }),
+          external_id: [hashedExternalId],
+          ...(lead.fbp && { fbp: lead.fbp }),
+          ...(lead.fbc && { fbc: lead.fbc }),
+        },
+        custom_data: {
+          currency: "GBP",
+          value: 1,
+          ...(lead.utm_source && { utm_source: lead.utm_source }),
+          ...(lead.utm_campaign && { utm_campaign: lead.utm_campaign }),
+          ...(lead.utm_content && { utm_content: lead.utm_content }),
+          lead_id: lead.id,
+          booking_slot_start: slotStart,
+        },
       },
-    }),
+    ],
+  };
+
+  const response = await fetch(`https://graph.facebook.com/v19.0/${PIXEL_ID}/events?access_token=${META_TOKEN}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
   });
 
   const result = await response.json().catch(() => ({}));
