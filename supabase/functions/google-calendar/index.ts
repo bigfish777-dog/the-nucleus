@@ -45,7 +45,10 @@ async function sendMetaPurchase(lead: {
   const eventId = buildPurchaseEventId(lead.id, slotStart);
   const response = await fetch(META_CONVERSION_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    },
     body: JSON.stringify({
       eventName: "Purchase",
       eventId,
