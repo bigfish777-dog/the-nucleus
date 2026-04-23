@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, GripVertical } from 'lucide-react'
-import { fetchCreativeProductionItems, updateCreativeProductionStage, upsertCreativeProductionItem } from '../lib/supabase'
+import { Plus, GripVertical, Trash2 } from 'lucide-react'
+import { deleteCreativeProductionItem, fetchCreativeProductionItems, updateCreativeProductionStage, upsertCreativeProductionItem } from '../lib/supabase'
 
 type ScriptStage = 'scripted' | 'recorded' | 'sent_to_editor' | 'proof_received' | 'approved' | 'uploaded'
 
@@ -166,13 +166,25 @@ function AddScriptModal({ onClose, onCreate }: { onClose: () => void; onCreate: 
   )
 }
 
-function ScriptCard({ item, onAdvance }: { item: ScriptItem; onAdvance: (id: string) => void }) {
+function ScriptCard({ item, onAdvance, onDelete }: { item: ScriptItem; onAdvance: (id: string) => void; onDelete: (item: ScriptItem) => void }) {
   return (
     <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: `1px solid ${border}` }}>
       <div className="flex items-start gap-2 mb-2">
         <GripVertical size={14} style={{ color: muted, marginTop: 2, flexShrink: 0 }} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight" style={{ color: '#F0F2F8' }}>{item.title}</p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-semibold leading-tight" style={{ color: '#F0F2F8' }}>{item.title}</p>
+            <button
+              type="button"
+              onClick={() => onDelete(item)}
+              className="inline-flex items-center justify-center rounded-lg p-1.5"
+              style={{ background: 'rgba(255,255,255,0.06)', color: '#F87171' }}
+              aria-label={`Delete ${item.title}`}
+              title="Delete script"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
           <p className="text-xs mt-1 whitespace-pre-line" style={{ color: muted }}>{item.script}</p>
         </div>
       </div>
@@ -193,6 +205,7 @@ export default function CreativeProduction() {
   const [items, setItems] = useState<ScriptItem[]>(INITIAL_ITEMS)
   const [showAdd, setShowAdd] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [deleteError, setDeleteError] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -256,6 +269,23 @@ export default function CreativeProduction() {
     }
   }
 
+  const removeItem = async (item: ScriptItem) => {
+    const confirmed = window.confirm(`Delete "${item.title}"? This can't be undone.`)
+    if (!confirmed) return
+
+    setDeleteError('')
+    const previousItems = items
+    setItems(current => current.filter(existing => existing.id !== item.id))
+
+    try {
+      const { error } = await deleteCreativeProductionItem(item.id)
+      if (error) throw error
+    } catch {
+      setItems(previousItems)
+      setDeleteError('Could not delete that script. Please try again.')
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -286,6 +316,12 @@ export default function CreativeProduction() {
         </div>
       )}
 
+      {deleteError && (
+        <div className="rounded-xl p-4 text-sm font-semibold" style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.3)', color: '#FCA5A5' }}>
+          {deleteError}
+        </div>
+      )}
+
       <div className="grid xl:grid-cols-6 md:grid-cols-2 gap-3">
         {STAGES.map(stage => {
           const stageItems = items.filter(item => item.stage === stage.key)
@@ -301,7 +337,7 @@ export default function CreativeProduction() {
                     Nothing here.
                   </div>
                 ) : stageItems.map(item => (
-                  <ScriptCard key={item.id} item={item} onAdvance={advanceStage} />
+                  <ScriptCard key={item.id} item={item} onAdvance={advanceStage} onDelete={removeItem} />
                 ))}
               </div>
             </div>

@@ -78,3 +78,12 @@ export async function updateCreativeProductionStage(id: string, stage: string) {
     .single()
   return { data, error }
 }
+
+export async function deleteCreativeProductionItem(id: string) {
+  const { error } = await supabase
+    .from('creative_production_items')
+    .delete()
+    .eq('id', id)
+
+  return { error }
+}
