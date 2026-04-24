@@ -7,6 +7,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const META_TOKEN = Deno.env.get("META_TOKEN")!;
 const PIXEL_ID = "2497883973908307";
+const SLACK_BOT_TOKEN = Deno.env.get("SLACK_BOT_TOKEN") || "";
+const SLACK_CHANNEL_ID = "C0ANZ0G35RP"; // #fishtail-nucleus
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -504,6 +506,21 @@ serve(async (req: Request) => {
               meta_purchase_error: message.slice(0, 1000),
             }).eq("id", confirmedLeadId);
           }
+        }
+      }
+
+      // Send Slack notification for new booking
+      if (SLACK_BOT_TOKEN) {
+        try {
+          const callTime = new Date(slotStart).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+          const slackText = `📞 *New Call Booked!*\n• *Name:* ${leadName}\n• *Email:* ${leadEmail}\n• *Phone:* ${leadPhone || "N/A"}\n• *Revenue:* ${turnover || "N/A"}\n• *Industry:* ${industry || "N/A"}\n• *Source:* ${utm_source || "direct"}\n• *Call:* ${callTime}\n• *Meta CAPI:* ${shouldFireMetaPurchase ? "fired" : "skipped (under \u00a3500k)"}`;
+          await fetch("https://slack.com/api/chat.postMessage", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SLACK_BOT_TOKEN}` },
+            body: JSON.stringify({ channel: SLACK_CHANNEL_ID, text: slackText }),
+          });
+        } catch (slackErr) {
+          console.error("Slack notification failed:", slackErr);
         }
       }
 
