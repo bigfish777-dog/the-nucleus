@@ -523,12 +523,18 @@ serve(async (req: Request) => {
       if (SLACK_BOT_TOKEN) {
         try {
           const callTime = new Date(slotStart).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-          const slackText = `📞 *New Call Booked!*\n• *Name:* ${leadName}\n• *Email:* ${leadEmail}\n• *Phone:* ${leadPhone || "N/A"}\n• *Revenue:* ${turnover || "N/A"}\n• *Industry:* ${industry || "N/A"}\n• *Source:* ${utm_source || "direct"}\n• *Call:* ${callTime}\n• *Meta CAPI:* ${shouldFireMetaPurchase ? "fired" : "skipped (under \u00a3500k)"}`;
-          await fetch("https://slack.com/api/chat.postMessage", {
+          const slackText = `📞 *New Call Booked!*\n• *Name:* ${leadName}\n• *Email:* ${leadEmail}\n• *Phone:* ${leadPhone || "N/A"}\n• *Revenue:* ${turnover || "N/A"}\n• *Source:* ${utm_source || "direct"}\n• *Call:* ${callTime}\n• *Meta CAPI:* ${shouldFireMetaPurchase ? "fired" : "skipped (under \u00a3500k)"}`;
+          const slackResp = await fetch("https://slack.com/api/chat.postMessage", {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${SLACK_BOT_TOKEN}` },
             body: JSON.stringify({ channel: SLACK_CHANNEL_ID, text: slackText }),
           });
+          const slackResult = await slackResp.json();
+          if (!slackResult.ok) {
+            console.error("Slack API error:", JSON.stringify(slackResult));
+          } else {
+            console.log("Slack notification sent successfully");
+          }
         } catch (slackErr) {
           console.error("Slack notification failed:", slackErr);
         }
