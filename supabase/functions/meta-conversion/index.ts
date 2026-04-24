@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createHash } from "https://deno.land/std@0.168.0/crypto/mod.ts";
 
 // TTM Pixel ID — primary pixel
-const PIXEL_ID = "1427972831789819";
+const PIXEL_ID = "2497883973908307";
 const META_TOKEN = Deno.env.get("META_TOKEN")!;
 
 const corsHeaders = {

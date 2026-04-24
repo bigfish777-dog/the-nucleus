@@ -6,7 +6,7 @@ const GOOGLE_CLIENT_SECRET = Deno.env.get("GOOGLE_CLIENT_SECRET")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const META_TOKEN = Deno.env.get("META_TOKEN")!;
-const PIXEL_ID = "1427972831789819";
+const PIXEL_ID = "2497883973908307";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
