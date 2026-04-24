@@ -26,7 +26,8 @@ const AVAILABILITY_CONFIG = {
   slotDurationMinutes: 40,
   bufferMinutes: 10,     // 10-min buffer between calls
   minNoticeHours: 4,
-  maxWorkingDaysAhead: 4,
+  maxWorkingDaysWithSlots: 3,  // Show 3 working days that have available slots
+  maxScanDays: 21,             // Scan up to 21 calendar days ahead to find them
 };
 
 function buildPurchaseEventId(leadId: string, slotStart: string): string {
@@ -285,16 +286,10 @@ serve(async (req: Request) => {
       const now = new Date();
       const startDate = new Date(now);
 
-      // Calculate end date as N working days ahead (Mon-Fri only)
-      const maxWorkingDays = AVAILABILITY_CONFIG.maxWorkingDaysAhead;
-      let workingDaysCount = 0;
+      // Scan up to maxScanDays ahead to find enough working days with free slots
       const endDate = new Date(now);
+      endDate.setDate(endDate.getDate() + AVAILABILITY_CONFIG.maxScanDays);
       endDate.setHours(23, 59, 59, 999);
-      while (workingDaysCount < maxWorkingDays) {
-        endDate.setDate(endDate.getDate() + 1);
-        const day = endDate.getDay();
-        if (day !== 0 && day !== 6) workingDaysCount++; // skip weekends
-      }
 
       const busyTimes = await getBusyTimes(
         accessToken,
@@ -302,7 +297,19 @@ serve(async (req: Request) => {
         endDate.toISOString()
       );
 
-      const slots = generateAvailableSlots(startDate, endDate, busyTimes);
+      const allSlots = generateAvailableSlots(startDate, endDate, busyTimes);
+
+      // Group slots by date and keep only the first N working days that have slots
+      const targetDays = AVAILABILITY_CONFIG.maxWorkingDaysWithSlots;
+      const seenDates = new Set<string>();
+      const slots = allSlots.filter((s) => {
+        const dateKey = s.displayDate;
+        if (!seenDates.has(dateKey)) {
+          if (seenDates.size >= targetDays) return false;
+          seenDates.add(dateKey);
+        }
+        return seenDates.has(dateKey) && seenDates.size <= targetDays;
+      });
 
       return new Response(
         JSON.stringify({
