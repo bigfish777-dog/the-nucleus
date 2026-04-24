@@ -363,15 +363,18 @@ serve(async (req: Request) => {
       const event = {
         summary: `Marketing Growth Call — ${leadName}`,
         description: [
-          `Lead: ${leadName}`,
-          `Email: ${leadEmail}`,
-          `Phone: ${leadPhone || "Not provided"}`,
+          `Hi ${leadName.split(" ")[0]},`,
           ``,
-          `Booked via The Nucleus — book.testtubemarketing.com`,
-          leadId ? `Lead ID: ${leadId}` : "",
-        ]
-          .filter(Boolean)
-          .join("\n"),
+          `Thanks for booking a call with Test Tube Marketing.`,
+          ``,
+          `Join via Zoom: https://us06web.zoom.us/j/8792020476`,
+          ``,
+          `⚠️ Important: Please accept this calendar invite to confirm your attendance. If the invite is not accepted, the call may be cancelled.`,
+          ``,
+          `Speak soon!`,
+          `—`,
+          `<!-- Lead: ${leadName} | Email: ${leadEmail} | Phone: ${leadPhone || "N/A"} | ID: ${leadId || "N/A"} | Source: book.testtubemarketing.com -->`,
+        ].join("\n"),
         start: {
           dateTime: slotStart,
           timeZone: AVAILABILITY_CONFIG.timezone,
@@ -380,12 +383,12 @@ serve(async (req: Request) => {
           dateTime: slotEnd,
           timeZone: AVAILABILITY_CONFIG.timezone,
         },
+        location: "https://us06web.zoom.us/j/8792020476",
         attendees: [{ email: leadEmail }],
         reminders: {
           useDefault: false,
           overrides: [{ method: "popup", minutes: 15 }],
-        },
-        conferenceData: undefined, // Zoom link sent via confirmation email instead
+        }
       };
 
       // sendUpdates=all sends a Google Calendar invite to the attendee
