@@ -346,9 +346,13 @@ serve(async (req: Request) => {
         turnover,
       } = body;
 
-      // Only fire Meta Purchase if turnover is £500k+ (not under £500k or unknown)
+      // Detect test bookings
+      const TEST_EMAILS = ["bigfish@testtubemarketing.com"];
+      const isTestBooking = TEST_EMAILS.includes(leadEmail.toLowerCase()) || leadEmail.endsWith("@example.com");
+
+      // Only fire Meta Purchase if turnover is £500k+ (not under £500k or unknown) and not a test
       const UNDER_500K_VALUE = "Under £500k";
-      const shouldFireMetaPurchase = turnover && turnover !== UNDER_500K_VALUE;
+      const shouldFireMetaPurchase = !isTestBooking && turnover && turnover !== UNDER_500K_VALUE;
 
       if (!slotStart || !slotEnd || !leadName || !leadEmail) {
         return new Response(
@@ -428,6 +432,7 @@ serve(async (req: Request) => {
         call_datetime: slotStart,
         stage: "booked",
         booking_completed: true,
+        is_test: isTestBooking,
         updated_at: new Date().toISOString(),
         ...(turnover ? { revenue_range: turnover } : {}),
       };
@@ -519,8 +524,8 @@ serve(async (req: Request) => {
         }
       }
 
-      // Send Slack notification for new booking
-      if (SLACK_BOT_TOKEN) {
+      // Send Slack notification for new booking (skip test bookings)
+      if (SLACK_BOT_TOKEN && !isTestBooking) {
         try {
           const callTime = new Date(slotStart).toLocaleString("en-GB", { timeZone: "Europe/London", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
           const slackText = `📞 *New Call Booked!*\n• *Name:* ${leadName}\n• *Email:* ${leadEmail}\n• *Phone:* ${leadPhone || "N/A"}\n• *Revenue:* ${turnover || "N/A"}\n• *Source:* ${utm_source || "direct"}\n• *Call:* ${callTime}\n• *Meta CAPI:* ${shouldFireMetaPurchase ? "fired" : "skipped (under \u00a3500k)"}`;
