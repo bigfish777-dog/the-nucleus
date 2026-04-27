@@ -198,6 +198,21 @@ export default function Tracking() {
     }
   })
 
+  // ── Region breakdown ──────────────────────────────────────────────────────
+  const regionMap = new Map<string, { visits: number; leads: number; booked: number }>()
+  for (const event of events) {
+    const region = (event.metadata?.visitor_region as string) || 'Unknown'
+    const row = regionMap.get(region) || { visits: 0, leads: 0, booked: 0 }
+    if (event.event_type === 'page_view' && event.page_path === '/') row.visits += 1
+    if (event.event_type === 'lead_capture') row.leads += 1
+    if (event.event_type === 'booking_completed') row.booked += 1
+    regionMap.set(region, row)
+  }
+  const regionRows = Array.from(regionMap.entries())
+    .map(([region, data]) => ({ region, ...data, visitToLead: fmtPct(data.leads, data.visits), leadToBooked: fmtPct(data.booked, data.leads) }))
+    .filter(row => row.visits || row.leads || row.booked)
+    .sort((a, b) => b.visits - a.visits)
+
   // ── Source breakdown (unchanged, always combined) ───────────────────────────
   const sourceMap = new Map<string, { visits: number; leads: number; booked: number }>()
   for (const event of events) {
@@ -479,6 +494,47 @@ export default function Tracking() {
               ))}
               {!sourceRows.length && !loading && (
                 <tr><td colSpan={6} style={{ padding: '16px 0', color: muted }}>No tracking data yet. As soon as the live pages get traffic, this will fill from real page events only.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Region breakdown */}
+      <Card>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>Audience by region</p>
+            <p className="text-xs mt-1" style={{ color: muted }}>Based on visitor timezone · UK = Europe/London · US = America/* timezones</p>
+          </div>
+        </div>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', color: muted }}>
+                <th style={{ padding: '0 0 12px' }}>Region</th>
+                <th style={{ padding: '0 0 12px' }}>Visits</th>
+                <th style={{ padding: '0 0 12px' }}>Leads</th>
+                <th style={{ padding: '0 0 12px' }}>Booked</th>
+                <th style={{ padding: '0 0 12px' }}>Visit → Lead</th>
+                <th style={{ padding: '0 0 12px' }}>Lead → Booked</th>
+              </tr>
+            </thead>
+            <tbody>
+              {regionRows.map(row => (
+                <tr key={row.region} style={{ borderTop: `1px solid ${border}`, color: white }}>
+                  <td style={{ padding: '12px 0', fontWeight: 600 }}>
+                    {row.region === 'UK' ? '🇬🇧 UK' : row.region === 'US' ? '🇺🇸 US' : `🌍 ${row.region}`}
+                  </td>
+                  <td>{row.visits}</td>
+                  <td>{row.leads}</td>
+                  <td>{row.booked}</td>
+                  <td>{row.visitToLead}</td>
+                  <td>{row.leadToBooked}</td>
+                </tr>
+              ))}
+              {!regionRows.length && !loading && (
+                <tr><td colSpan={6} style={{ padding: '16px 0', color: muted }}>No region data yet. New visits will show region automatically.</td></tr>
               )}
             </tbody>
           </table>
