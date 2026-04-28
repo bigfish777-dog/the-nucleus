@@ -7,9 +7,21 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // ─── Lead operations ──────────────────────────────────────────────────────────
 export async function updateLeadStage(id: string, stage: string, fromStage?: string) {
+  const now = new Date().toISOString()
+  const updates: Record<string, unknown> = {
+    stage,
+    updated_at: now,
+    last_contact_at: now,
+  }
+
+  if (stage === 'booked') {
+    updates.booking_completed = true
+    updates.booked_at = now
+  }
+
   const { error } = await supabase
     .from('leads')
-    .update({ stage, updated_at: new Date().toISOString(), last_contact_at: new Date().toISOString() })
+    .update(updates)
     .eq('id', id)
 
   if (!error && fromStage) {

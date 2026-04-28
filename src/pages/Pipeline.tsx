@@ -541,9 +541,11 @@ export default function Pipeline() {
       return
     }
 
+    const now = new Date().toISOString()
     const nextLead = current ? {
       ...current,
       stage,
+      ...(stage === 'booked' ? { booking_completed: true, booked_at: current.booked_at || now } : {}),
       ...(stage === 'rescheduled' && current.call_datetime ? { booking_completed: true } : {}),
     } : null
 
