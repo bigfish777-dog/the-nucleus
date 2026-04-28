@@ -10,6 +10,7 @@ const green = '#22C55E'
 
 // ── Pipeline columns (active work only) ──────────────────────────────────────
 const PIPELINE_COLUMNS: { stages: PipelineStage[]; label: string; color: string }[] = [
+  { stages: ['leads'], label: 'Leads', color: teal },
   { stages: ['booked'], label: 'Call Booked', color: teal },
   { stages: ['qualified'], label: 'Proposal in Prep', color: '#7C5CBF' },
   { stages: ['proposal_sent', 'proposal_live'], label: 'Proposal Sent', color: amber },
@@ -34,6 +35,7 @@ const ARCHIVE_COLUMNS: { stage: PipelineStage; label: string }[] = [
 
 // ── Stage selector options ────────────────────────────────────────────────────
 const STAGE_OPTIONS: { stage: PipelineStage; label: string; group: string }[] = [
+  { stage: 'leads', label: 'Lead', group: 'Active' },
   { stage: 'booked', label: 'Call Booked', group: 'Active' },
   { stage: 'qualified', label: 'Proposal in Prep', group: 'Active' },
   { stage: 'proposal_sent', label: 'Proposal Sent', group: 'Active' },
@@ -556,7 +558,9 @@ export default function Pipeline() {
   }
 
   const pipelineStages = new Set(PIPELINE_COLUMNS.flatMap(c => c.stages))
-  const pipelineLeads = leads.filter(l => pipelineStages.has(l.stage) && l.booking_completed)
+  const pipelineLeads = leads.filter(l =>
+    pipelineStages.has(l.stage) && (l.stage === 'leads' || l.booking_completed)
+  )
   const archiveLeads = leads.filter(l => !pipelineStages.has(l.stage))
   const overdueCount = pipelineLeads.filter(l => isCallOverdue(l)).length
   const searchQuery = search.toLowerCase().trim()
