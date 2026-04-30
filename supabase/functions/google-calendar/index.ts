@@ -344,6 +344,7 @@ serve(async (req: Request) => {
         utm_campaign,
         utm_content,
         turnover,
+        variant,
       } = body;
 
       // Detect test bookings
@@ -435,6 +436,7 @@ serve(async (req: Request) => {
         is_test: isTestBooking,
         updated_at: new Date().toISOString(),
         ...(turnover ? { revenue_range: turnover } : {}),
+        ...(variant === "a" || variant === "b" ? { variant } : {}),
       };
 
       let confirmedLeadId: string | null = leadId || null;

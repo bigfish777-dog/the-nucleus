@@ -41,6 +41,12 @@ type TrackingEvent = {
   metadata?: Record<string, string | number | boolean | null>
 }
 
+type BookedLead = {
+  created_at: string
+  stage: string
+  variant?: 'a' | 'b' | null
+}
+
 type CardVariant = 'combined' | 'a' | 'b'
 type ChartVariant = 'both' | 'a' | 'b'
 type ChartMetric = 'visits' | 'leads' | 'booked'
@@ -66,13 +72,19 @@ function filterEvents(evts: TrackingEvent[], v: CardVariant) {
   return evts.filter(e => e.variant === 'b')
 }
 
-function variantStats(events: TrackingEvent[], v: 'a' | 'b') {
+function filterBookedLeads(leads: BookedLead[], v: CardVariant) {
+  if (v === 'combined') return leads
+  if (v === 'a') return leads.filter(l => !l.variant || l.variant === 'a')
+  return leads.filter(l => l.variant === 'b')
+}
+
+function variantStats(events: TrackingEvent[], leads: BookedLead[], v: 'a' | 'b') {
   const evts = filterEvents(events, v)
   const landing = evts.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
   const booking = evts.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
-  const leads = evts.filter(e => e.event_type === 'lead_capture').length
-  const booked = evts.filter(e => e.event_type === 'booking_completed').length
-  return { landing, booking, leads, booked }
+  const leadsCount = evts.filter(e => e.event_type === 'lead_capture').length
+  const booked = filterBookedLeads(leads, v).length
+  return { landing, booking, leads: leadsCount, booked }
 }
 
 function SegmentedToggle<T extends string>({
@@ -115,7 +127,7 @@ function SegmentedToggle<T extends string>({
 
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
-  const [bookedLeads, setBookedLeads] = React.useState<{ created_at: string; stage: string }[]>([])
+  const [bookedLeads, setBookedLeads] = React.useState<BookedLead[]>([])
   const [loading, setLoading] = React.useState(true)
 
   // Card variant toggle
@@ -140,7 +152,7 @@ export default function Tracking() {
 
         const [eventsRes, leadsRes] = await Promise.all([
           fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant,metadata`, { headers }),
-          fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage&order=created_at.asc`, { headers }),
+          fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage,variant&order=created_at.asc`, { headers }),
         ])
         const eventsJson = await eventsRes.json()
         const leadsJson = await leadsRes.json()
@@ -160,12 +172,8 @@ export default function Tracking() {
   const cardLanding = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
   const cardBooking = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
   const cardLeads = filteredForCards.filter(e => e.event_type === 'lead_capture').length
-  // Booked: always use spam-excluded leads table as source of truth.
-  // Until the leads table has a variant column, all bookings are Variant A by definition
-  // (B hasn't launched). Variant B shows 0 from tracking_events (correct).
-  const cardBooked = cardVariant === 'b'
-    ? filteredForCards.filter(e => e.event_type === 'booking_completed').length
-    : bookedLeads.length
+  // Booked: use the leads table as source of truth, now that variant is persisted there too.
+  const cardBooked = filterBookedLeads(bookedLeads, cardVariant).length
 
   const cardSubtitle =
     cardVariant === 'combined' ? 'Showing combined data across both variants'
@@ -185,9 +193,7 @@ export default function Tracking() {
       const evts = filterEvents(events, v)
       if (type === 'visits') return evts.filter(e => e.event_type === 'page_view' && e.page_path === '/' && e.created_at.slice(0, 10) === key).length
       if (type === 'leads') return evts.filter(e => e.event_type === 'lead_capture' && e.created_at.slice(0, 10) === key).length
-      // booked — use leads table for combined, tracking events for variants
-      if (v === 'combined') return bookedLeads.filter(l => l.created_at.slice(0, 10) === key).length
-      return evts.filter(e => e.event_type === 'booking_completed' && e.created_at.slice(0, 10) === key).length
+      if (type === 'booked') return filterBookedLeads(bookedLeads, v).filter(l => l.created_at.slice(0, 10) === key).length
     }
 
     return {
@@ -231,8 +237,8 @@ export default function Tracking() {
     .slice(0, 8)
 
   // ── A/B comparison stats ────────────────────────────────────────────────────
-  const aStats = variantStats(events, 'a')
-  const bStats = variantStats(events, 'b')
+  const aStats = variantStats(events, bookedLeads, 'a')
+  const bStats = variantStats(events, bookedLeads, 'b')
   const totalVariantVisits = aStats.landing + bStats.landing
 
   // ── Post-booking question funnel ───────────────────────────────────────────
