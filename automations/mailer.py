@@ -186,11 +186,17 @@ def send_email(to, subject, body_text, body_html=None):
     print(f"  ✓ Sent to {to}")
 
 def fmt_dt(dt_str):
-    if not dt_str: return "TBC"
+    if not dt_str:
+        return "TBC"
     try:
         dt = datetime.fromisoformat(dt_str.replace('Z', '+00:00'))
-        return dt.strftime("%A %-d %B at %-I:%M%p GMT").replace("AM","am").replace("PM","pm")
-    except: return dt_str[:16]
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        local_dt = dt.astimezone(UK_TZ)
+        tz_label = local_dt.tzname() or "UK time"
+        return local_dt.strftime(f"%A %-d %B at %-I:%M%p {tz_label}").replace("AM", "am").replace("PM", "pm")
+    except:
+        return dt_str[:16]
 
 
 def queue_whatsapp_confirmation(lead):
