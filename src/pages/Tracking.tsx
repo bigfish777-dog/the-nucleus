@@ -47,9 +47,31 @@ type BookedLead = {
   variant?: 'a' | 'b' | null
 }
 
+type ChangeLogItem = {
+  id: string
+  change_date: string
+  note: string
+  variant: 'a' | 'b' | 'both'
+  created_at: string
+}
+
 type CardVariant = 'combined' | 'a' | 'b'
 type ChartVariant = 'both' | 'a' | 'b'
 type ChartMetric = 'visits' | 'leads' | 'booked'
+
+async function fetchAllRows<T>(pathWithQuery: string, headers: Record<string, string>, batchSize = 1000): Promise<T[]> {
+  const rows: T[] = []
+
+  for (let from = 0; ; from += batchSize) {
+    const res = await fetch(`${pathWithQuery}${pathWithQuery.includes('?') ? '&' : '?'}limit=${batchSize}&offset=${from}`, { headers })
+    const json = await res.json()
+    const batch = Array.isArray(json) ? json as T[] : []
+    rows.push(...batch)
+    if (batch.length < batchSize) break
+  }
+
+  return rows
+}
 
 function dateKey(date: Date) {
   return date.toISOString().slice(0, 10)
@@ -128,7 +150,15 @@ function SegmentedToggle<T extends string>({
 export default function Tracking() {
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
   const [bookedLeads, setBookedLeads] = React.useState<BookedLead[]>([])
+  const [changeLog, setChangeLog] = React.useState<ChangeLogItem[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [savingChange, setSavingChange] = React.useState(false)
+  const [changeError, setChangeError] = React.useState<string | null>(null)
+  const [changeForm, setChangeForm] = React.useState({
+    change_date: new Date().toISOString().slice(0, 10),
+    variant: 'both' as 'a' | 'b' | 'both',
+    note: '',
+  })
 
   // Card variant toggle
   const [cardVariant, setCardVariant] = React.useState<CardVariant>('combined')
@@ -150,17 +180,27 @@ export default function Tracking() {
         const sinceIso = since.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
-        const [eventsRes, leadsRes] = await Promise.all([
-          fetch(`${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant,metadata`, { headers }),
-          fetch(`${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage,variant&order=created_at.asc`, { headers }),
+        const [eventsJson, leadsJson, changeLogJson] = await Promise.all([
+          fetchAllRows<TrackingEvent>(
+            `${SUPABASE_URL}/rest/v1/tracking_events?created_at=gte.${encodeURIComponent(sinceIso)}&order=created_at.asc&select=created_at,page_path,utm_source,utm_campaign,utm_content,session_id,event_type,variant,metadata`,
+            headers,
+          ),
+          fetchAllRows<BookedLead>(
+            `${SUPABASE_URL}/rest/v1/leads?booking_completed=eq.true&stage=not.in.(spam,test)&created_at=gte.${encodeURIComponent(sinceIso)}&select=created_at,stage,variant&order=created_at.asc`,
+            headers,
+          ),
+          fetchAllRows<ChangeLogItem>(
+            `${SUPABASE_URL}/rest/v1/tracking_change_log?select=id,change_date,note,variant,created_at&order=change_date.desc,created_at.desc`,
+            headers,
+          ),
         ])
-        const eventsJson = await eventsRes.json()
-        const leadsJson = await leadsRes.json()
-        setEvents(Array.isArray(eventsJson) ? eventsJson : [])
-        setBookedLeads(Array.isArray(leadsJson) ? leadsJson : [])
+        setEvents(eventsJson)
+        setBookedLeads(leadsJson)
+        setChangeLog(changeLogJson)
       } catch {
         setEvents([])
         setBookedLeads([])
+        setChangeLog([])
       }
       setLoading(false)
     }
@@ -266,6 +306,37 @@ export default function Tracking() {
 
   const SIGNIFICANCE_THRESHOLD = 100
 
+  async function saveChangeLog() {
+    const note = changeForm.note.trim()
+    if (!note) {
+      setChangeError('Add a short note first.')
+      return
+    }
+
+    setSavingChange(true)
+    setChangeError(null)
+    try {
+      const headers = {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      }
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/tracking_change_log`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify([{ ...changeForm, note }]),
+      })
+      const json = await res.json()
+      if (!res.ok || !Array.isArray(json) || !json[0]) throw new Error('Failed to save change log entry')
+      setChangeLog(current => [json[0] as ChangeLogItem, ...current])
+      setChangeForm(current => ({ ...current, note: '' }))
+    } catch {
+      setChangeError('Couldn\'t save that change just now.')
+    }
+    setSavingChange(false)
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -298,6 +369,74 @@ export default function Tracking() {
           <MetricCard label="Visit → booked" value={fmtPct(cardBooked, cardLanding)} sub="End-to-end conversion" />
         </div>
       </div>
+
+      {/* Change log */}
+      <Card>
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>Experiment change log</p>
+            <p className="text-xs mt-1" style={{ color: muted }}>Log page edits here so you can line them up with performance changes.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[140px_140px_1fr_auto] gap-3 mb-4">
+          <input
+            type="date"
+            value={changeForm.change_date}
+            onChange={e => setChangeForm(current => ({ ...current, change_date: e.target.value }))}
+            style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, color: white, borderRadius: 8, padding: '10px 12px' }}
+          />
+          <select
+            value={changeForm.variant}
+            onChange={e => setChangeForm(current => ({ ...current, variant: e.target.value as 'a' | 'b' | 'both' }))}
+            style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, color: white, borderRadius: 8, padding: '10px 12px' }}
+          >
+            <option value="both">Both</option>
+            <option value="a">Variant A</option>
+            <option value="b">Variant B</option>
+          </select>
+          <input
+            type="text"
+            value={changeForm.note}
+            onChange={e => setChangeForm(current => ({ ...current, note: e.target.value }))}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                void saveChangeLog()
+              }
+            }}
+            placeholder="e.g. Shortened Variant B by removing testimonial and FAQ sections"
+            style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, color: white, borderRadius: 8, padding: '10px 12px' }}
+          />
+          <button
+            onClick={() => void saveChangeLog()}
+            disabled={savingChange}
+            style={{ background: teal, color: '#07131A', border: 'none', borderRadius: 8, padding: '10px 14px', fontWeight: 700, opacity: savingChange ? 0.7 : 1, cursor: savingChange ? 'wait' : 'pointer' }}
+          >
+            {savingChange ? 'Saving…' : 'Save change'}
+          </button>
+        </div>
+
+        {changeError && <p className="text-xs mb-3" style={{ color: '#FCA5A5' }}>{changeError}</p>}
+
+        <div className="space-y-2">
+          {changeLog.slice(0, 12).map(item => (
+            <div key={item.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 10 }}>
+              <div className="flex items-center justify-between gap-3 mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold" style={{ color: white }}>{new Date(`${item.change_date}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'rgba(255,255,255,0.06)', color: item.variant === 'a' ? varA : item.variant === 'b' ? varB : muted }}>
+                    {item.variant === 'both' ? 'Both variants' : `Variant ${item.variant.toUpperCase()}`}
+                  </span>
+                </div>
+                <span className="text-xs" style={{ color: muted }}>{new Date(item.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+              <p className="text-sm" style={{ color: white }}>{item.note}</p>
+            </div>
+          ))}
+          {!changeLog.length && <p className="text-xs" style={{ color: muted }}>No changes logged yet. Add the first one above.</p>}
+        </div>
+      </Card>
 
       {/* Post-booking question funnel */}
       <Card>
