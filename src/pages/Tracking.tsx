@@ -1,5 +1,6 @@
 import React from 'react'
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, BarChart, Bar } from 'recharts'
+import { useSearchParams } from 'react-router-dom'
 import { TRACKING_RESET_CUTOVER } from '../lib/cutover'
 
 // Brand colours
@@ -58,6 +59,7 @@ type ChangeLogItem = {
 type CardVariant = 'combined' | 'a' | 'b'
 type ChartVariant = 'both' | 'a' | 'b'
 type ChartMetric = 'visits' | 'leads' | 'booked'
+type DateRangePreset = '7d' | '14d' | '30d' | 'all'
 
 async function fetchAllRows<T>(pathWithQuery: string, headers: Record<string, string>, batchSize = 1000): Promise<T[]> {
   const rows: T[] = []
@@ -85,6 +87,20 @@ function fmtPct(numerator: number, denominator: number) {
 function pctNum(numerator: number, denominator: number) {
   if (!denominator) return 0
   return (numerator / denominator) * 100
+}
+
+function addDays(dateStr: string, days: number) {
+  const date = new Date(`${dateStr}T12:00:00`)
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+function isInDateRange(dateStr: string, startDate: string, endDate: string) {
+  return dateStr >= startDate && dateStr <= endDate
+}
+
+function isValidDateParam(value: string | null): value is string {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
 }
 
 // Treat null variant as A (all historical data pre-B-launch is effectively A)
@@ -148,6 +164,7 @@ function SegmentedToggle<T extends string>({
 }
 
 export default function Tracking() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [events, setEvents] = React.useState<TrackingEvent[]>([])
   const [bookedLeads, setBookedLeads] = React.useState<BookedLead[]>([])
   const [changeLog, setChangeLog] = React.useState<ChangeLogItem[]>([])
@@ -165,19 +182,32 @@ export default function Tracking() {
   // Chart controls
   const [chartVariant, setChartVariant] = React.useState<ChartVariant>('both')
   const [chartMetric, setChartMetric] = React.useState<ChartMetric>('visits')
+  const [minAvailableDate, setMinAvailableDate] = React.useState(TRACKING_RESET_CUTOVER.slice(0, 10))
+  const [startDate, setStartDate] = React.useState(() => {
+    const from = searchParams.get('from')
+    return isValidDateParam(from) ? from : TRACKING_RESET_CUTOVER.slice(0, 10)
+  })
+  const [endDate, setEndDate] = React.useState(() => {
+    const to = searchParams.get('to')
+    return isValidDateParam(to) ? to : new Date().toISOString().slice(0, 10)
+  })
+
+  React.useEffect(() => {
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
+    const nextStart = isValidDateParam(from) ? from : minAvailableDate
+    const nextEnd = isValidDateParam(to) ? to : new Date().toISOString().slice(0, 10)
+
+    if (nextStart !== startDate) setStartDate(nextStart)
+    if (nextEnd !== endDate) setEndDate(nextEnd)
+  }, [endDate, minAvailableDate, searchParams, startDate])
 
   React.useEffect(() => {
     async function load() {
       setLoading(true)
       try {
-        const since = new Date()
         const cutover = new Date(TRACKING_RESET_CUTOVER)
-        if (cutover > since) {
-          since.setDate(since.getDate() - 30)
-        } else {
-          since.setTime(cutover.getTime())
-        }
-        const sinceIso = since.toISOString()
+        const sinceIso = cutover.toISOString()
         const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` }
 
         const [eventsJson, leadsJson, changeLogJson] = await Promise.all([
@@ -197,6 +227,18 @@ export default function Tracking() {
         setEvents(eventsJson)
         setBookedLeads(leadsJson)
         setChangeLog(changeLogJson)
+
+        const eventDates = eventsJson.map(event => event.created_at.slice(0, 10))
+        const leadDates = leadsJson.map(lead => lead.created_at.slice(0, 10))
+        const availableDates = [...eventDates, ...leadDates].sort()
+        if (availableDates.length) {
+          const earliestDate = availableDates[0]
+          setMinAvailableDate(earliestDate)
+          setStartDate(current => {
+            if (!isValidDateParam(current) || current < earliestDate) return earliestDate
+            return current
+          })
+        }
       } catch {
         setEvents([])
         setBookedLeads([])
@@ -207,13 +249,75 @@ export default function Tracking() {
     load()
   }, [])
 
+  React.useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const safeStart = startDate < minAvailableDate ? minAvailableDate : startDate
+    const safeEnd = endDate > today ? today : endDate
+    const normalizedStart = safeStart > safeEnd ? safeEnd : safeStart
+
+    if (normalizedStart !== startDate) {
+      setStartDate(normalizedStart)
+      return
+    }
+    if (safeEnd !== endDate) {
+      setEndDate(safeEnd)
+      return
+    }
+
+    const next = new URLSearchParams(searchParams)
+    next.set('from', normalizedStart)
+    next.set('to', safeEnd)
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true })
+    }
+  }, [endDate, minAvailableDate, searchParams, setSearchParams, startDate])
+
+  const presetRange = React.useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    if (startDate === minAvailableDate && endDate === today) return 'all'
+    if (endDate === today) {
+      const presets: DateRangePreset[] = ['7d', '14d', '30d']
+      const matched = presets.find(preset => startDate === addDays(today, -(Number.parseInt(preset, 10) - 1)))
+      if (matched) return matched
+    }
+    return null
+  }, [endDate, minAvailableDate, startDate])
+
+  const rangedEvents = React.useMemo(
+    () => events.filter(event => isInDateRange(event.created_at.slice(0, 10), startDate, endDate)),
+    [endDate, events, startDate],
+  )
+  const rangedBookedLeads = React.useMemo(
+    () => bookedLeads.filter(lead => isInDateRange(lead.created_at.slice(0, 10), startDate, endDate)),
+    [bookedLeads, endDate, startDate],
+  )
+  const rangedChangeLog = React.useMemo(
+    () => changeLog.filter(item => isInDateRange(item.change_date, startDate, endDate)),
+    [changeLog, endDate, startDate],
+  )
+
+  const setDateRangePreset = React.useCallback((preset: DateRangePreset) => {
+    const today = new Date().toISOString().slice(0, 10)
+    setEndDate(today)
+    if (preset === 'all') {
+      setStartDate(minAvailableDate)
+      return
+    }
+    const days = Number.parseInt(preset, 10)
+    setStartDate(addDays(today, -(days - 1)))
+  }, [minAvailableDate])
+
+  const rangeLabel = startDate === endDate
+    ? new Date(`${startDate}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : `${new Date(`${startDate}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} → ${new Date(`${endDate}T12:00:00`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`
+
   // ── Metric card data (filtered by cardVariant) ──────────────────────────────
-  const filteredForCards = filterEvents(events, cardVariant)
+  const filteredForCards = filterEvents(rangedEvents, cardVariant)
   const cardLanding = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/').length
   const cardBooking = filteredForCards.filter(e => e.event_type === 'page_view' && e.page_path === '/book').length
   const cardLeads = filteredForCards.filter(e => e.event_type === 'lead_capture').length
   // Booked: use the leads table as source of truth, now that variant is persisted there too.
-  const cardBooked = filterBookedLeads(bookedLeads, cardVariant).length
+  const cardBooked = filterBookedLeads(rangedBookedLeads, cardVariant).length
 
   const cardSubtitle =
     cardVariant === 'combined' ? 'Showing combined data across both variants'
@@ -221,23 +325,23 @@ export default function Tracking() {
     : 'Showing Variant B (questions-first) only'
 
   // ── Chart data ──────────────────────────────────────────────────────────────
-  const now = new Date()
-  const hasBData = events.some(e => e.variant === 'b')
+  const hasBData = rangedEvents.some(e => e.variant === 'b')
 
-  const daily = Array.from({ length: 30 }, (_, idx) => {
-    const day = new Date(now)
-    day.setDate(now.getDate() - (29 - idx))
+  const totalDays = Math.max(1, Math.round((new Date(`${endDate}T12:00:00`).getTime() - new Date(`${startDate}T12:00:00`).getTime()) / 86400000) + 1)
+  const daily = Array.from({ length: totalDays }, (_, idx) => {
+    const day = new Date(`${startDate}T12:00:00`)
+    day.setDate(day.getDate() + idx)
     const key = dateKey(day)
 
     function dayCount(v: CardVariant, type: ChartMetric) {
-      const evts = filterEvents(events, v)
+      const evts = filterEvents(rangedEvents, v)
       if (type === 'visits') return evts.filter(e => e.event_type === 'page_view' && e.page_path === '/' && e.created_at.slice(0, 10) === key).length
       if (type === 'leads') return evts.filter(e => e.event_type === 'lead_capture' && e.created_at.slice(0, 10) === key).length
-      if (type === 'booked') return filterBookedLeads(bookedLeads, v).filter(l => l.created_at.slice(0, 10) === key).length
+      if (type === 'booked') return filterBookedLeads(rangedBookedLeads, v).filter(l => l.created_at.slice(0, 10) === key).length
     }
 
     return {
-      label: key.slice(5),
+      label: totalDays > 31 ? key : key.slice(5),
       varA: dayCount('a', chartMetric),
       varB: dayCount('b', chartMetric),
       combined: dayCount('combined', chartMetric),
@@ -246,7 +350,7 @@ export default function Tracking() {
 
   // ── Region breakdown ──────────────────────────────────────────────────────
   const regionMap = new Map<string, { visits: number; leads: number; booked: number }>()
-  for (const event of events) {
+  for (const event of rangedEvents) {
     const region = (event.metadata?.visitor_region as string) || 'Unknown'
     const row = regionMap.get(region) || { visits: 0, leads: 0, booked: 0 }
     if (event.event_type === 'page_view' && event.page_path === '/') row.visits += 1
@@ -261,7 +365,7 @@ export default function Tracking() {
 
   // ── Source breakdown (unchanged, always combined) ───────────────────────────
   const sourceMap = new Map<string, { visits: number; leads: number; booked: number }>()
-  for (const event of events) {
+  for (const event of rangedEvents) {
     const key = event.utm_campaign || event.utm_source || event.utm_content || 'Direct / unknown'
     const row = sourceMap.get(key) || { visits: 0, leads: 0, booked: 0 }
     if (event.event_type === 'page_view' && event.page_path === '/') row.visits += 1
@@ -277,8 +381,8 @@ export default function Tracking() {
     .slice(0, 8)
 
   // ── A/B comparison stats ────────────────────────────────────────────────────
-  const aStats = variantStats(events, bookedLeads, 'a')
-  const bStats = variantStats(events, bookedLeads, 'b')
+  const aStats = variantStats(rangedEvents, rangedBookedLeads, 'a')
+  const bStats = variantStats(rangedEvents, rangedBookedLeads, 'b')
   const totalVariantVisits = aStats.landing + bStats.landing
 
   // ── Post-booking question funnel ───────────────────────────────────────────
@@ -290,8 +394,8 @@ export default function Tracking() {
     readiness: 'Investment readiness',
     website: 'Website',
   }
-  const totalBooked = bookedLeads.length
-  const pbqEvents = events.filter(e => e.event_type === 'post_booking_question')
+  const totalBooked = rangedBookedLeads.length
+  const pbqEvents = rangedEvents.filter(e => e.event_type === 'post_booking_question')
   const pbqCounts: Record<string, number> = {}
   for (const q of POST_BOOKING_Q_KEYS) {
     pbqCounts[q] = pbqEvents.filter((e: { metadata?: { question?: string } }) => e.metadata?.question === q).length
@@ -344,7 +448,47 @@ export default function Tracking() {
         <h1 className="text-xl font-bold" style={{ color: white }}>Tracking</h1>
         <p className="text-sm mt-0.5" style={{ color: muted }}>Real event data from book.testtubemarketing.com only</p>
         <p className="text-xs mt-1" style={{ color: muted }}>Reset from {new Date(TRACKING_RESET_CUTOVER).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}</p>
+        <p className="text-xs mt-1" style={{ color: muted }}>Current range: {rangeLabel}</p>
       </div>
+
+      <Card>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: muted }}>Date range</p>
+            <p className="text-xs mt-1" style={{ color: muted }}>Filter the split-test and tracking data to a specific reporting window.</p>
+          </div>
+          <div className="flex flex-col gap-3 lg:items-end">
+            <SegmentedToggle<DateRangePreset>
+              options={[
+                { value: '7d', label: '7D' },
+                { value: '14d', label: '14D' },
+                { value: '30d', label: '30D' },
+                { value: 'all', label: 'All time' },
+              ]}
+              value={presetRange || 'all'}
+              onChange={setDateRangePreset}
+            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                type="date"
+                min={minAvailableDate}
+                max={endDate}
+                value={startDate}
+                onChange={e => setStartDate(e.target.value)}
+                style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, color: white, borderRadius: 8, padding: '10px 12px' }}
+              />
+              <input
+                type="date"
+                min={startDate}
+                max={new Date().toISOString().slice(0, 10)}
+                value={endDate}
+                onChange={e => setEndDate(e.target.value)}
+                style={{ background: 'rgba(255,255,255,0.04)', border: `1px solid ${border}`, color: white, borderRadius: 8, padding: '10px 12px' }}
+              />
+            </div>
+          </div>
+        </div>
+      </Card>
 
       {/* Metric cards with variant toggle */}
       <div>
@@ -420,7 +564,7 @@ export default function Tracking() {
         {changeError && <p className="text-xs mb-3" style={{ color: '#FCA5A5' }}>{changeError}</p>}
 
         <div className="space-y-2">
-          {changeLog.slice(0, 12).map(item => (
+          {rangedChangeLog.slice(0, 12).map(item => (
             <div key={item.id} style={{ borderTop: `1px solid ${border}`, paddingTop: 10 }}>
               <div className="flex items-center justify-between gap-3 mb-1">
                 <div className="flex items-center gap-2">
@@ -434,7 +578,7 @@ export default function Tracking() {
               <p className="text-sm" style={{ color: white }}>{item.note}</p>
             </div>
           ))}
-          {!changeLog.length && <p className="text-xs" style={{ color: muted }}>No changes logged yet. Add the first one above.</p>}
+          {!rangedChangeLog.length && <p className="text-xs" style={{ color: muted }}>No changes logged in this date range yet.</p>}
         </div>
       </Card>
 
